@@ -46,7 +46,7 @@ export default function AIPromptBar({
     setShowExamples(false);
 
     try {
-      const res = await fetch("http://localhost:8000/api/interpret", {
+      const res = await fetch("https://architect-ai-4baw.onrender.com/api/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

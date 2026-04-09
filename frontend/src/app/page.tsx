@@ -8,8 +8,7 @@ import { AIParams, InterpretResponse, LayoutResponse } from "@/types";
 const EXAMPLE_PROMPTS = [
   "Design a 3-floor residential building on a 20x30m plot with 4 bedrooms and parking",
   "5 floor apartment building on a 40x60 lot",
-  "Mixed-use building on a 30x40 lot with retail on ground floor",
-  "2 floor modern house with garage on a 15x25m plot",
+  "Mixed-use building on a 30x40 lot with retail on the ground floor",
 ];
 
 const DEMO_PROMPT =
@@ -113,12 +112,10 @@ export default function Home() {
         <section className="text-center space-y-3">
           <p className="text-sm font-mono uppercase tracking-[0.2em] text-arch-accent">architect.ai</p>
           <h1 className="font-display text-3xl md:text-5xl font-700 text-white leading-tight">
-            Design buildings from a prompt.
-            <br />
-            Instantly evaluate zoning feasibility.
+            Design buildings from a prompt and instantly check zoning feasibility.
           </h1>
           <p className="max-w-3xl mx-auto text-sm md:text-base text-arch-text-dim leading-relaxed">
-            An AI prototype that converts a building idea into a conceptual building model and zoning feasibility report.
+            Convert a building idea into structured parameters, a conceptual layout, and a zoning compliance report.
           </p>
         </section>
 

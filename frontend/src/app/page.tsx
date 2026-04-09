@@ -31,7 +31,7 @@ export default function Home() {
     setError(null);
 
     try {
-      const res = await fetch("https://architect-ai-4baw.onrender.com", {
+      const res = await fetch("https://architect-ai-4baw.onrender.com/generate-layout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),

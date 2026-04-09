@@ -69,7 +69,9 @@ Design a 3-floor residential building on a 20x30m plot with 4 bedrooms and parki
 User Prompt
      ↓
 AI Parameter Extraction
-@@ -72,7 +75,11 @@ Layout Generation
+     ↓
+Layout Generation
+     ↓
 Zoning Compliance Check
      ↓
 Interactive Visualization
@@ -81,7 +83,14 @@ Interactive Visualization
 Frontend (Next.js + React + Three.js)
         │
         ▼
-@@ -87,54 +94,58 @@ Structured Building Model
+Backend API (FastAPI)
+        │
+        ├── Prompt Interpretation (LLM via Groq)
+        ├── Layout Generator
+        └── Zoning Compliance Engine
+        │
+        ▼
+Structured Building Model
         │
         ▼
 2D / 3D Visualization

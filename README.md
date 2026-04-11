@@ -1,4 +1,4 @@
-# architect.ai
+# Architect Ai
 
 Generate building concepts and instantly evaluate zoning feasibility from a prompt.
 

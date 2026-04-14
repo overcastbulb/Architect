@@ -24,6 +24,7 @@ module.exports = {
           "text-dim": "#6b7394",
           pass: "#22c55e",
           fail: "#ef4444",
+          warn: "#f59e0b",
         },
       },
       animation: {

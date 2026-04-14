@@ -1,10 +1,10 @@
 "use client";
 
-import { LayoutResponse, Room } from "@/types";
+import { LayoutData, Room } from "@/types";
 import { useRef, Fragment } from "react";
 
 interface Props {
-  layout: LayoutResponse;
+  layout: LayoutData;
 }
 
 const ROOM_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {

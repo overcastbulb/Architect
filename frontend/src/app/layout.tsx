@@ -14,12 +14,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {/* Suppress browser extension errors (e.g. updateActuationOverlay from shadow host) */}
+        {/* Suppress browser extension errors */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                // Override extension-injected function to prevent console errors
                 var origDefine = Object.defineProperty;
                 Object.defineProperty(window, 'updateActuationOverlay', {
                   configurable: true,

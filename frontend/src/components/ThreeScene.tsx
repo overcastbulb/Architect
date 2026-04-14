@@ -1,13 +1,13 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Environment, Grid, Text } from "@react-three/drei";
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { LayoutResponse, Room } from "@/types";
+import { LayoutData, Room } from "@/types";
 
 interface Props {
-  layout: LayoutResponse;
+  layout: LayoutData;
 }
 
 const ROOM_COLORS: Record<string, string> = {
@@ -90,7 +90,22 @@ function FloorRoom({ room, floorIndex, offsetX, offsetZ }: FloorRoomProps) {
   );
 }
 
-function Building({ layout }: { layout: LayoutResponse }) {
+/** Animated building wrapper — scales from 0 to 1 */
+function AnimatedBuilding({ layout }: { layout: LayoutData }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const scaleRef = useRef(0);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    if (scaleRef.current < 1) {
+      scaleRef.current = Math.min(1, scaleRef.current + delta * 2.2);
+      const ease = scaleRef.current < 1
+        ? 1 - Math.pow(1 - scaleRef.current, 3)
+        : 1;
+      groupRef.current.scale.setScalar(ease);
+    }
+  });
+
   const { rooms, building_width, building_length, floors } = layout;
 
   const offsetX = building_width / 2;
@@ -105,7 +120,7 @@ function Building({ layout }: { layout: LayoutResponse }) {
   }, [floors]);
 
   return (
-    <group>
+    <group ref={groupRef} scale={0}>
       {/* Plot boundary (ground) */}
       <mesh receiveShadow position={[0, -0.01, 0]}>
         <boxGeometry args={[layout.dimensions.plot_width, 0.04, layout.dimensions.plot_length]} />
@@ -146,7 +161,7 @@ function Building({ layout }: { layout: LayoutResponse }) {
   );
 }
 
-function Scene({ layout }: { layout: LayoutResponse }) {
+function Scene({ layout }: { layout: LayoutData }) {
   const camDistance = Math.max(layout.building_width, layout.building_length) * 2.5;
 
   return (
@@ -181,7 +196,7 @@ function Scene({ layout }: { layout: LayoutResponse }) {
       />
 
       <Suspense fallback={null}>
-        <Building layout={layout} />
+        <AnimatedBuilding layout={layout} />
         <Environment preset="city" />
       </Suspense>
 

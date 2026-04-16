@@ -90,7 +90,7 @@ function FloorRoom({ room, floorIndex, offsetX, offsetZ }: FloorRoomProps) {
   );
 }
 
-/** Animated building wrapper — scales from 0 to 1 */
+/** Animated building wrapper - scales from 0 to 1 */
 function AnimatedBuilding({ layout }: { layout: LayoutData }) {
   const groupRef = useRef<THREE.Group>(null);
   const scaleRef = useRef(0);
@@ -233,8 +233,8 @@ export default function ThreeScene({ layout }: Props) {
 
       {/* Overlay labels */}
       <div className="absolute bottom-4 left-4 text-xs font-mono text-arch-text-dim space-y-1 pointer-events-none">
-        <div>🖱️ Drag to orbit · Scroll to zoom · Right-drag to pan</div>
-        <div className="text-arch-accent">{layout.floors} floor{layout.floors !== 1 ? "s" : ""} · {layout.rooms.length} rooms</div>
+        <div>Drag to orbit | Scroll to zoom | Right-drag to pan</div>
+        <div className="text-arch-accent">{layout.floors} floor{layout.floors !== 1 ? "s" : ""} | {layout.rooms.length} rooms</div>
       </div>
     </div>
   );

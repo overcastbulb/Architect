@@ -6,7 +6,7 @@ import LayoutView from "@/components/LayoutView";
 import ThreeScene from "@/components/ThreeScene";
 import AddressInput from "@/components/AddressInput";
 
-// Dynamic import â€” Leaflet needs `window` (no SSR)
+// Dynamic import - Leaflet needs `window` (no SSR)
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 import {
   AIParams,
@@ -300,7 +300,7 @@ export default function Home() {
             <div className="bg-arch-surface border border-arch-border rounded-2xl p-4 md:p-6 space-y-3">
               <h3 className="text-lg font-display text-white">Zoning Compliance Report</h3>
 
-              {/* Zone info badge (NEW â€” only shows when real zone detected) */}
+              {/* Zone info badge (NEW - only shows when real zone detected) */}
               {zoning.zone_info && (
                 <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-arch-accent/30 bg-arch-accent/5">
                   <span className="px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-arch-accent/20 text-arch-accent border border-arch-accent/30">
@@ -310,13 +310,13 @@ export default function Home() {
                     {zoning.zone_info.zone_name}
                   </span>
                   <span className="text-xs text-arch-text-dim">
-                    â€” {zoning.zone_info.city} Â· {zoning.zone_info.authority}
+                    &mdash; {zoning.zone_info.city} &middot; {zoning.zone_info.authority}
                   </span>
                 </div>
               )}
               {zoning.zone_info && (
                 <p className="text-xs font-mono text-arch-text-dim">
-                  ðŸ“‹ Source: {zoning.zone_info.source}
+                  Source: {zoning.zone_info.source}
                 </p>
               )}
 
@@ -359,7 +359,7 @@ export default function Home() {
                             : "bg-arch-fail/15 text-arch-fail border border-arch-fail/30"
                         }`}
                       >
-                        {rule.status === "OK" ? "âœ“ OK" : rule.status === "WARNING" ? "âš  WARN" : "âœ— FAIL"}
+                        {rule.status === "OK" ? "OK" : rule.status === "WARNING" ? "WARN" : "FAIL"}
                       </span>
                     </div>
                   ))}

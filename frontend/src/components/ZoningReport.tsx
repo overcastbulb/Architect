@@ -8,18 +8,65 @@ interface Props {
   loading: boolean;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const cls =
-    status === "OK"
-      ? "badge-ok"
-      : status === "WARNING"
-      ? "badge-warn"
-      : "badge-violation";
-  const icon = status === "OK" ? "✓" : status === "WARNING" ? "⚠" : "✗";
+function StatusIcon({ status }: { status: string }) {
+  if (status === "OK") {
+    return (
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (status === "WARNING") {
+    return (
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 2L1.5 13.5h13L8 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M8 7v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="8" cy="12" r="0.75" fill="currentColor" />
+      </svg>
+    );
+  }
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${cls}`}>
-      {icon} {status}
+    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const colorClass =
+    status === "OK"
+      ? "bg-[rgba(34,197,94,0.15)] text-[#22c55e] border border-[rgba(34,197,94,0.3)]"
+      : status === "WARNING"
+      ? "bg-[rgba(245,158,11,0.15)] text-[#f59e0b] border border-[rgba(245,158,11,0.3)]"
+      : "bg-[rgba(239,68,68,0.15)] text-[#ef4444] border border-[rgba(239,68,68,0.3)]";
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${colorClass}`}>
+      <StatusIcon status={status} /> {status}
     </span>
+  );
+}
+
+function OverallStatusIcon({ status }: { status: string }) {
+  if (status === "PASS") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (status === "WARNING") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3L2 21h20L12 3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M12 10v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="12" cy="18" r="1" fill="currentColor" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -29,28 +76,24 @@ function OverallBadge({ status }: { status: string }) {
       bg: "bg-arch-pass/10",
       border: "border-arch-pass/30",
       text: "text-arch-pass",
-      icon: "✓",
       label: "All Rules Passed",
     },
     WARNING: {
       bg: "bg-arch-warn/10",
       border: "border-arch-warn/30",
       text: "text-arch-warn",
-      icon: "⚠",
       label: "Warnings Detected",
     },
     FAIL: {
       bg: "bg-arch-fail/10",
       border: "border-arch-fail/30",
       text: "text-arch-fail",
-      icon: "✗",
       label: "Violations Found",
     },
   }[status] || {
     bg: "bg-arch-surface",
     border: "border-arch-border",
     text: "text-arch-text-dim",
-    icon: "?",
     label: status,
   };
 
@@ -60,7 +103,7 @@ function OverallBadge({ status }: { status: string }) {
         className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold ${config.text}`}
         style={{ background: `${config.text === "text-arch-pass" ? "rgba(34,197,94,0.15)" : config.text === "text-arch-warn" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)"}` }}
       >
-        {config.icon}
+        <OverallStatusIcon status={status} />
       </div>
       <div>
         <div className={`text-lg font-bold tracking-tight ${config.text}`}>
@@ -144,11 +187,17 @@ export default function ZoningReport({ zoning, layout, loading }: Props) {
           </div>
           <div className="text-[10px] text-arch-text-dim font-mono leading-relaxed space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-arch-accent-light/60">📍</span>
-              {zoning.zone_info.city} — {zoning.zone_info.authority}
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-arch-accent-light opacity-60 shrink-0">
+                <path d="M8 1C5.2 1 3 3.2 3 6c0 4 5 9 5 9s5-5 5-9c0-2.8-2.2-5-5-5z" stroke="currentColor" strokeWidth="1.2" />
+                <circle cx="8" cy="6" r="1.5" stroke="currentColor" strokeWidth="1" />
+              </svg>
+              {zoning.zone_info.city} &mdash; {zoning.zone_info.authority}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-arch-accent-light/60">📋</span>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-arch-accent-light opacity-60 shrink-0">
+                <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M5 6h6M5 8h6M5 10h4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+              </svg>
               {zoning.zone_info.source}
             </div>
           </div>
@@ -157,8 +206,11 @@ export default function ZoningReport({ zoning, layout, loading }: Props) {
 
       {!zoning.zone_info && (
         <div className="rounded-xl p-3 bg-arch-surface-2 border border-arch-border space-y-1">
-          <span className="text-[10px] font-mono text-arch-text-dim">
-            ⚡ Using default mock rules — enter an address for real zoning data
+          <span className="text-[10px] font-mono text-arch-text-dim flex items-center gap-1.5">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-arch-accent shrink-0">
+              <path d="M8 2l2 5h4l-3.5 3 1.5 5L8 12l-4 3 1.5-5L2 7h4l2-5z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            </svg>
+            Using default mock rules &mdash; enter an address for real zoning data
           </span>
         </div>
       )}
@@ -211,7 +263,11 @@ export default function ZoningReport({ zoning, layout, loading }: Props) {
               key={i}
               className="p-3 bg-arch-fail/5 border border-arch-fail/20 rounded-lg flex gap-2"
             >
-              <span className="text-arch-fail mt-0.5 shrink-0 text-xs">⚠</span>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-arch-fail mt-0.5 shrink-0">
+                <path d="M8 2L1.5 13.5h13L8 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M8 7v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="8" cy="12" r="0.75" fill="currentColor" />
+              </svg>
               <p className="text-[11px] text-arch-text leading-relaxed">{v}</p>
             </div>
           ))}

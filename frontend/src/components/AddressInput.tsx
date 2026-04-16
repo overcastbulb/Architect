@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { AddressData } from "@/types";
@@ -90,7 +90,7 @@ export default function AddressInput({ onAddressSelect, disabled }: Props) {
         setShowDropdown(data.length > 0);
       }
     } catch {
-      // Nominatim is down â€” silently fail, user can still type manually
+      // Nominatim is down - silently fail, user can still type manually
     } finally {
       setLoading(false);
     }
@@ -203,7 +203,7 @@ export default function AddressInput({ onAddressSelect, disabled }: Props) {
               disabled={disabled}
               className="shrink-0 text-arch-text-dim hover:text-arch-text transition-colors text-xs"
             >
-              ✕
+              x
             </button>
           )}
         </div>
@@ -250,8 +250,8 @@ export default function AddressInput({ onAddressSelect, disabled }: Props) {
       {resolved && detectedCity && (
         <div className="flex items-center gap-2 text-xs font-mono animate-fade-in">
           <span className="w-1.5 h-1.5 rounded-full bg-arch-pass animate-pulse" />
-          <span className="text-arch-pass">📍 City detected: {detectedCity}</span>
-          <span className="text-arch-text-dim">— zoning rules will be loaded</span>
+          <span className="text-arch-pass">City detected: {detectedCity}</span>
+          <span className="text-arch-text-dim">- zoning rules will be loaded</span>
         </div>
       )}
 
@@ -259,15 +259,15 @@ export default function AddressInput({ onAddressSelect, disabled }: Props) {
       {resolved && !detectedCity && (
         <div className="flex items-center gap-2 text-xs font-mono animate-fade-in">
           <span className="w-1.5 h-1.5 rounded-full bg-arch-accent animate-pulse" />
-          <span className="text-arch-accent">📍 Address set</span>
-          <span className="text-arch-text-dim">— using default zoning rules</span>
+          <span className="text-arch-accent">Address set</span>
+          <span className="text-arch-text-dim">- using default zoning rules</span>
         </div>
       )}
 
       {/* Hint when typing but nothing resolved yet */}
       {query.trim().length > 0 && query.trim().length < 3 && !resolved && (
         <p className="text-[11px] font-mono text-arch-text-dim">
-          Keep typing to search addressesâ€¦
+          Keep typing to search addresses...
         </p>
       )}
     </div>

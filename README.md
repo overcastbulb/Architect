@@ -24,7 +24,7 @@ The result is slow iteration and high upfront design cost.
 
 ## Solution
 
-architect.ai introduces a prompt-first workflow for architectural feasibility.
+Architect AI introduces a prompt-first workflow for architectural feasibility.
 
 Users describe a building concept in natural language.  
 The system interprets the request and automatically:
@@ -142,7 +142,7 @@ By translating natural-language building ideas into structured spatial models an
 
 ## Vision
 
-architect.ai aims to evolve into an AI architecture copilot capable of:
+Architect AI aims to evolve into an AI architecture copilot capable of:
 
 - analyzing real parcel and zoning datasets
 - generating site-aware building massing

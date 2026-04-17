@@ -240,13 +240,12 @@ export default function Home() {
                 return (
                   <div
                     key={step}
-                    className={`rounded-lg border px-3 py-2 text-sm ${
-                      active
+                    className={`rounded-lg border px-3 py-2 text-sm ${active
                         ? "border-arch-accent/60 bg-arch-accent/10 text-white"
                         : completed
-                        ? "border-arch-pass/40 bg-arch-pass/10 text-arch-pass"
-                        : "border-arch-border text-arch-text-dim"
-                    }`}
+                          ? "border-arch-pass/40 bg-arch-pass/10 text-arch-pass"
+                          : "border-arch-border text-arch-text-dim"
+                      }`}
                   >
                     {step}
                   </div>
@@ -299,7 +298,18 @@ export default function Home() {
         {zoning && layout && (
           <section className="space-y-6">
             <div className="bg-arch-surface border border-arch-border rounded-2xl p-4 md:p-6 space-y-3">
-              <h3 className="text-lg font-display text-white">Zoning Compliance Report</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-display text-white">Zoning Compliance Report</h3>
+                <button
+                  onClick={() => generatePDFReport({ zoning, layout, interpretation, addressData })}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono border border-arch-accent/40 text-arch-accent hover:bg-arch-accent/10 transition-colors">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 1v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  Export PDF
+                </button>
+              </div>
 
               {/* Zone info badge (NEW - only shows when real zone detected) */}
               {zoning.zone_info && (
@@ -324,13 +334,12 @@ export default function Home() {
               {/* Overall status (ORIGINAL) */}
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`px-2.5 py-1 rounded-md text-xs font-mono ${
-                    zoning.overall_status === "PASS"
+                  className={`px-2.5 py-1 rounded-md text-xs font-mono ${zoning.overall_status === "PASS"
                       ? "bg-arch-pass/15 text-arch-pass border border-arch-pass/40"
                       : zoning.overall_status === "WARNING"
-                      ? "bg-arch-warn/15 text-arch-warn border border-arch-warn/40"
-                      : "bg-arch-fail/15 text-arch-fail border border-arch-fail/40"
-                  }`}
+                        ? "bg-arch-warn/15 text-arch-warn border border-arch-warn/40"
+                        : "bg-arch-fail/15 text-arch-fail border border-arch-fail/40"
+                    }`}
                 >
                   {zoning.overall_status}
                 </span>
@@ -353,13 +362,12 @@ export default function Home() {
                           <span className="text-xs text-arch-text-dim ml-2">({rule.message})</span>
                         </div>
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium ${
-                            rule.status === "OK"
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium ${rule.status === "OK"
                               ? "bg-arch-pass/15 text-arch-pass border border-arch-pass/30"
                               : rule.status === "WARNING"
-                              ? "bg-arch-warn/15 text-arch-warn border border-arch-warn/30"
-                              : "bg-arch-fail/15 text-arch-fail border border-arch-fail/30"
-                          }`}
+                                ? "bg-arch-warn/15 text-arch-warn border border-arch-warn/30"
+                                : "bg-arch-fail/15 text-arch-fail border border-arch-fail/30"
+                            }`}
                         >
                           {rule.status === "OK" ? "OK" : rule.status === "WARNING" ? "WARN" : "FAIL"}
                         </span>

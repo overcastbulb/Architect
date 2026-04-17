@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import LayoutView from "@/components/LayoutView";
 import ThreeScene from "@/components/ThreeScene";
 import AddressInput from "@/components/AddressInput";
+import { generatePDFReport } from "@/utils/exportReport";
 
 // Dynamic import - Leaflet needs `window` (no SSR)
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });

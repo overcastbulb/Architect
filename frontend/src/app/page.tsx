@@ -299,19 +299,7 @@ export default function Home() {
         {zoning && layout && (
           <section className="space-y-6">
             <div className="bg-arch-surface border border-arch-border rounded-2xl p-4 md:p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-display text-white">Zoning Compliance Report</h3>
-                <button
-                  onClick={() => generatePDFReport({ zoning, layout, interpretation, addressData })}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono border border-arch-accent/40 text-arch-accent hover:bg-arch-accent/10 transition-colors"
-                >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 1v9M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                  Export PDF
-                </button>
-              </div>
+              <h3 className="text-lg font-display text-white">Zoning Compliance Report</h3>
 
               {/* Zone info badge (NEW - only shows when real zone detected) */}
               {zoning.zone_info && (

@@ -16,18 +16,30 @@ interface NominatimResult {
 }
 
 // Indian cities for keyword-based detection (fallback)
-const CITIES = [
-  { label: "Navi Mumbai", keywords: ["navi mumbai", "new mumbai", "vashi", "kharghar", "belapur", "nerul", "airoli", "panvel", "kopar khairane", "sanpada", "seawoods", "ulwe", "taloja", "cidco"], lat: 19.0368, lng: 73.0158 },
-  { label: "Mumbai", keywords: ["mumbai", "bombay", "bandra", "andheri", "worli", "powai", "malad", "borivali", "thane", "dadar", "kurla", "goregaon", "juhu", "colaba", "bkc", "brihanmumbai"], lat: 19.076, lng: 72.8777 },
-  { label: "Pune", keywords: ["pune", "pmrda", "pimpri", "chinchwad", "hinjewadi", "kothrud", "hadapsar", "wakad", "baner", "koregaon", "viman nagar", "kharadi", "aundh", "shivajinagar"], lat: 18.5204, lng: 73.8567 },
-  { label: "Delhi", keywords: ["delhi", "new delhi", "nct of delhi", "dwarka", "rohini", "saket", "karol bagh", "lajpat nagar", "vasant kunj", "janakpuri", "pitampura", "noida", "gurgaon", "gurugram"], lat: 28.6139, lng: 77.209 },
-  { label: "Bangalore", keywords: ["bangalore", "bengaluru", "whitefield", "koramangala", "indiranagar", "jayanagar", "hsr layout", "electronic city", "marathahalli", "hebbal", "yelahanka", "jp nagar", "btm"], lat: 12.9716, lng: 77.5946 },
-  { label: "Hyderabad", keywords: ["hyderabad", "secunderabad", "hitec city", "hitech city", "gachibowli", "madhapur", "banjara hills", "jubilee hills", "kukatpally", "miyapur", "kondapur", "begumpet", "ameerpet", "charminar", "telangana"], lat: 17.385, lng: 78.4867 },
-  { label: "Chennai", keywords: ["chennai", "madras", "anna nagar", "t nagar", "adyar", "velachery", "tambaram", "porur", "guindy", "sholinganallur", "mylapore", "perambur", "nungambakkam", "kodambakkam"], lat: 13.0827, lng: 80.2707 },
-  { label: "Ahmedabad", keywords: ["ahmedabad", "ahemdabad", "ahmadabad", "satellite", "bodakdev", "prahlad nagar", "thaltej", "vastrapur", "navrangpura", "maninagar", "bopal", "sg highway"], lat: 23.0225, lng: 72.5714 },
-  { label: "Surat", keywords: ["surat", "adajan", "vesu", "piplod", "athwa", "varachha", "katargam", "dumas"], lat: 21.1702, lng: 72.8311 },
-  { label: "Nashik", keywords: ["nashik", "nasik", "nashick", "gangapur", "panchavati", "cidco nashik"], lat: 19.9975, lng: 73.7898 },
-];
+const CITY_CONSTRAINTS: Record<string, {
+  zone_code: string;
+  zone_name: string;
+  authority: string;
+  source: string;
+  max_fsi: number;
+  max_floors: number;
+  max_height_m: number;
+  min_setback_front_m: number;
+  min_setback_side_m: number;
+  max_coverage_pct: number;
+  permitted_uses: string[];
+}> = {
+  "Mumbai": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "BMC (MCGM)", source: "DCPR 2034", max_fsi: 1.33, max_floors: 8, max_height_m: 24, min_setback_front_m: 4.5, min_setback_side_m: 2.5, max_coverage_pct: 55, permitted_uses: ["Residential", "Mixed"] },
+  "Pune": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "PMC / PMRDA", source: "UDCPR-2020 & PMRDA DP 2041", max_fsi: 1.5, max_floors: 5, max_height_m: 15, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 60, permitted_uses: ["Residential", "Mixed"] },
+  "Delhi": { zone_code: "Residential", zone_name: "Residential Zone", authority: "DDA", source: "DDA MPD-2021", max_fsi: 1.2, max_floors: 4, max_height_m: 15, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 50, permitted_uses: ["Residential"] },
+  "Bangalore": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "BBMP / BDA", source: "BBMP Building Bye-Laws & RMP 2031", max_fsi: 2.25, max_floors: 6, max_height_m: 18, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 60, permitted_uses: ["Residential", "Mixed"] },
+  "Hyderabad": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "HMDA / GHMC", source: "HMDA Zoning Regulations", max_fsi: 1.75, max_floors: 6, max_height_m: 18, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 55, permitted_uses: ["Residential", "Mixed"] },
+  "Chennai": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "CMDA / GCC", source: "CMDA Building Rules", max_fsi: 2.0, max_floors: 6, max_height_m: 18, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 60, permitted_uses: ["Residential", "Mixed"] },
+  "Ahmedabad": { zone_code: "R1", zone_name: "Low Density Residential", authority: "AUDA / AMC", source: "AUDA GDCR", max_fsi: 1.2, max_floors: 3, max_height_m: 10, min_setback_front_m: 3, min_setback_side_m: 1.5, max_coverage_pct: 50, permitted_uses: ["Residential"] },
+  "Surat": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "SUDA / SMC", source: "SUDA DCR", max_fsi: 1.8, max_floors: 5, max_height_m: 15, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 55, permitted_uses: ["Residential", "Mixed"] },
+  "Nashik": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "NMC", source: "NMC DCR", max_fsi: 1.5, max_floors: 5, max_height_m: 15, min_setback_front_m: 3, min_setback_side_m: 2, max_coverage_pct: 60, permitted_uses: ["Residential", "Mixed"] },
+  "Navi Mumbai": { zone_code: "R2", zone_name: "Medium Density Residential", authority: "CIDCO / NMMC", source: "CIDCO Regulations", max_fsi: 2.0, max_floors: 8, max_height_m: 24, min_setback_front_m: 4.5, min_setback_side_m: 2.5, max_coverage_pct: 60, permitted_uses: ["Residential", "Mixed"] },
+};
 
 function detectCityFromText(text: string): string | null {
   const lower = text.toLowerCase();
@@ -50,6 +62,7 @@ export default function AddressInput({ onAddressSelect, disabled }: Props) {
   const [loading, setLoading] = useState(false);
   const [resolved, setResolved] = useState<AddressData | null>(null);
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
+  const constraints = detectedCity ? CITY_CONSTRAINTS[detectedCity] ?? null : null;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -276,6 +289,60 @@ export default function AddressInput({ onAddressSelect, disabled }: Props) {
         <p className="text-[11px] font-mono text-arch-text-dim">
           Keep typing to search addresses...
         </p>
+      )}
+
+      {/* Site Constraints Panel */}
+      {resolved && constraints && (
+        <div className="rounded-xl border border-arch-accent/20 bg-arch-bg p-4 space-y-3 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-mono uppercase tracking-[0.15em] text-arch-accent">
+              Site Constraints
+            </p>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-arch-accent/20 text-arch-accent border border-arch-accent/30">
+              {constraints.zone_code}
+            </span>
+          </div>
+          <p className="text-xs text-arch-text-dim font-mono">
+            {constraints.zone_name} — {constraints.authority}
+          </p>
+          <p className="text-[10px] text-arch-text-dim/60 font-mono">
+            Source: {constraints.source}
+          </p>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {[
+              { label: "Max FSI", value: constraints.max_fsi },
+              { label: "Max Floors", value: constraints.max_floors },
+              { label: "Max Height", value: `${constraints.max_height_m}m` },
+              { label: "Front Setback", value: `≥ ${constraints.min_setback_front_m}m` },
+              { label: "Side Setback", value: `≥ ${constraints.min_setback_side_m}m` },
+              { label: "Max Coverage", value: `${constraints.max_coverage_pct}%` },
+            ].map((item) => (
+              <div key={item.label} className="flex justify-between items-center px-2 py-1.5 rounded-lg bg-arch-surface border border-arch-border">
+                <span className="text-[10px] text-arch-text-dim font-mono">{item.label}</span>
+                <span className="text-[11px] text-white font-mono font-semibold">{item.value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1 pt-1">
+            {constraints.permitted_uses.map((use) => (
+              <span key={use} className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-arch-accent/10 text-arch-accent border border-arch-accent/20">
+                {use}
+              </span>
+            ))}
+          </div>
+          <p className="text-[9px] font-mono text-arch-text-dim/40">
+            * Default zone shown. Exact zone detected after Generate.
+          </p>
+        </div>
+      )}
+
+      {/* Non top-10 city fallback message */}
+      {resolved && !constraints && detectedCity === null && (
+        <div className="rounded-xl border border-arch-border bg-arch-bg px-4 py-3 animate-fade-in">
+          <p className="text-[11px] font-mono text-arch-text-dim">
+            AI will estimate zoning constraints for this location after Generate.
+          </p>
+        </div>
       )}
     </div>
   );

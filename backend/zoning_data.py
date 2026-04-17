@@ -1,478 +1,640 @@
 """
 zoning_data.py
-Comprehensive Indian city zoning database.
-Contains real FSI, height, setback, and coverage rules for Pune, Mumbai, and Bangalore.
-Sources: UDCPR-2020, PMRDA DP 2041, DCPR 2034, BBMP Building Bye-Laws.
+Hardcoded zoning database for top 10 Indian construction cities.
+Sources: UDCPR-2020, DCPR 2034, DDA MPD-2021, BBMP Bye-Laws, HMDA Rules,
+         CMDA Building Rules, AUDA GDCR, SUDA DCR, NMC DCR, CIDCO Regulations.
+Falls back to AI-estimated or default mock rules for other cities.
 """
 
 from typing import Dict, Any, List, Optional
 
 # ---------------------------------------------------------------------------
-# City bounding boxes for coordinate-based city detection
-# Format: { city: (lat_min, lat_max, lng_min, lng_max) }
+# City name aliases for robust detection from Nominatim address strings
+# Keys are canonical city names, values are lowercase aliases to match
 # ---------------------------------------------------------------------------
-CITY_BOUNDARIES: Dict[str, tuple] = {
-    "pune": (18.40, 18.65, 73.72, 74.00),
-    "mumbai": (18.87, 19.30, 72.77, 73.05),
-    "bangalore": (12.85, 13.15, 77.45, 77.78),
+CITY_ALIASES: Dict[str, List[str]] = {
+    "Mumbai": [
+        "mumbai", "bombay", "greater mumbai", "brihanmumbai",
+        "bandra", "andheri", "worli", "powai", "malad", "borivali",
+        "dadar", "kurla", "goregaon", "juhu", "colaba", "bkc",
+        "kandivali", "chembur", "mulund", "ghatkopar", "vikhroli",
+        "santacruz", "vile parle",
+    ],
+    "Pune": [
+        "pune", "poona", "pmrda", "pimpri", "chinchwad",
+        "hinjewadi", "kothrud", "hadapsar", "wakad", "baner",
+        "koregaon", "viman nagar", "kharadi", "aundh", "shivajinagar",
+        "magarpatta", "kalyani nagar", "pashan", "bavdhan", "undri",
+        "warje", "sinhagad", "katraj",
+    ],
+    "Delhi": [
+        "delhi", "new delhi", "nct of delhi", "nct", "national capital territory",
+        "dwarka", "rohini", "saket", "connaught", "karol bagh",
+        "lajpat nagar", "defence colony", "vasant kunj", "janakpuri",
+        "pitampura", "south delhi", "north delhi", "east delhi",
+        "west delhi", "central delhi", "noida", "gurgaon", "gurugram",
+    ],
+    "Bangalore": [
+        "bangalore", "bengaluru", "whitefield", "koramangala",
+        "indiranagar", "jayanagar", "hsr layout", "electronic city",
+        "marathahalli", "hebbal", "yelahanka", "jp nagar", "btm",
+        "sarjapur", "bannerghatta", "rajajinagar", "malleshwaram",
+        "basavanagudi",
+    ],
+    "Hyderabad": [
+        "hyderabad", "secunderabad", "hitec city", "hitech city",
+        "gachibowli", "madhapur", "banjara hills", "jubilee hills",
+        "kukatpally", "miyapur", "kondapur", "begumpet",
+        "ameerpet", "charminar", "shamshabad",
+    ],
+    "Chennai": [
+        "chennai", "madras", "anna nagar", "t nagar", "t. nagar",
+        "adyar", "velachery", "tambaram", "porur", "guindy",
+        "sholinganallur", "omr", "ecr", "mylapore", "perambur",
+        "nungambakkam", "kodambakkam",
+    ],
+    "Ahmedabad": [
+        "ahmedabad", "ahemdabad", "ahmadabad",
+        "satellite", "bodakdev", "prahlad nagar", "thaltej",
+        "vastrapur", "navrangpura", "maninagar", "bopal",
+        "science city", "sg highway",
+    ],
+    "Surat": [
+        "surat", "adajan", "vesu", "piplod", "athwa",
+        "varachha", "katargam", "dumas",
+    ],
+    "Nashik": [
+        "nashik", "nasik", "nashick",
+        "gangapur", "panchavati", "cidco nashik",
+    ],
+    "Navi Mumbai": [
+        "navi mumbai", "new mumbai", "cidco",
+        "vashi", "kharghar", "belapur", "nerul", "airoli",
+        "panvel", "kopar khairane", "sanpada", "seawoods",
+        "ulwe", "taloja",
+    ],
 }
 
-# Broad India bounding box for nationwide fallback.
-INDIA_BOUNDARY = (6.0, 37.5, 68.0, 98.5)  # lat_min, lat_max, lng_min, lng_max
-
 # ---------------------------------------------------------------------------
-# Zone database — keyed by "city:zone_code"
+# Hardcoded zoning rules for top 10 cities
+# Internal field names match what zoning_checker.py expects
 # ---------------------------------------------------------------------------
-ZONE_DATABASE: Dict[str, Dict[str, Any]] = {
-    # ========== PUNE (PMRDA / PMC) ==========
-    "pune:R1": {
-        "zone_code": "R1",
-        "zone_name": "Low Density Residential",
-        "city": "Pune",
-        "authority": "PMC / PMRDA",
-        "source": "UDCPR-2020 & PMRDA Development Plan 2041",
-        "max_fsi": 1.1,
-        "max_floors": 4,
-        "max_height_m": 15.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 1.5,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 55.0,
-        "permitted_uses": [
-            "Detached housing", "Row houses", "Bungalows",
-            "Parks", "Playground", "Primary school"
-        ],
-        "conditional_uses": [
-            "Home-based professional office",
-            "Neighbourhood retail (ground floor, < 50 sqm)"
-        ],
+CITY_ZONES: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "Mumbai": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Mumbai",
+            "authority": "BMC (MCGM)",
+            "source": "DCPR 2034",
+            "max_fsi": 1.0,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Mumbai",
+            "authority": "BMC (MCGM)",
+            "source": "DCPR 2034",
+            "max_fsi": 1.33,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 2.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 55.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Mumbai",
+            "authority": "BMC (MCGM)",
+            "source": "DCPR 2034",
+            "max_fsi": 2.0,
+            "max_floors": 10,
+            "max_height_m": 30.0,
+            "min_setback_front_m": 6.0,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-    "pune:R2": {
-        "zone_code": "R2",
-        "zone_name": "Medium Density Residential",
-        "city": "Pune",
-        "authority": "PMC / PMRDA",
-        "source": "UDCPR-2020 & PMRDA Development Plan 2041",
-        "max_fsi": 1.5,
-        "max_floors": 7,
-        "max_height_m": 24.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.0,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 50.0,
-        "permitted_uses": [
-            "Apartments", "Group housing", "Societies",
-            "Parks", "Schools", "Clinics"
-        ],
-        "conditional_uses": [
-            "Mixed-use retail (ground floor only)",
-            "Home office", "Guest house"
-        ],
+    "Pune": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Pune",
+            "authority": "PMC / PMRDA",
+            "source": "UDCPR-2020 & PMRDA DP 2041",
+            "max_fsi": 1.0,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Pune",
+            "authority": "PMC / PMRDA",
+            "source": "UDCPR-2020 & PMRDA DP 2041",
+            "max_fsi": 1.5,
+            "max_floors": 5,
+            "max_height_m": 15.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Pune",
+            "authority": "PMC / PMRDA",
+            "source": "UDCPR-2020 & PMRDA DP 2041",
+            "max_fsi": 2.0,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-    "pune:C1": {
-        "zone_code": "C1",
-        "zone_name": "Local Commercial",
-        "city": "Pune",
-        "authority": "PMC / PMRDA",
-        "source": "UDCPR-2020 & PMRDA Development Plan 2041",
-        "max_fsi": 1.5,
-        "max_floors": 5,
-        "max_height_m": 18.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.0,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 55.0,
-        "permitted_uses": [
-            "Retail shops", "Offices", "Restaurants",
-            "Banks", "Showrooms"
-        ],
-        "conditional_uses": [
-            "Residential above ground floor",
-            "Clinic / Diagnostic centre"
-        ],
+    "Delhi": {
+        "Residential": {
+            "zone_code": "Residential",
+            "zone_name": "Residential Zone",
+            "city": "Delhi",
+            "authority": "DDA",
+            "source": "DDA MPD-2021",
+            "max_fsi": 1.2,
+            "max_floors": 4,
+            "max_height_m": 15.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "Commercial": {
+            "zone_code": "Commercial",
+            "zone_name": "Commercial Zone",
+            "city": "Delhi",
+            "authority": "DDA",
+            "source": "DDA MPD-2021",
+            "max_fsi": 3.5,
+            "max_floors": 10,
+            "max_height_m": 30.0,
+            "min_setback_front_m": 6.0,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
+        "Mixed Use": {
+            "zone_code": "Mixed Use",
+            "zone_name": "Mixed Use Zone",
+            "city": "Delhi",
+            "authority": "DDA",
+            "source": "DDA MPD-2021",
+            "max_fsi": 2.0,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 55.0,
+            "permitted_uses": ["residential", "commercial", "mixed"],
+        },
     },
-    "pune:C2": {
-        "zone_code": "C2",
-        "zone_name": "Central Commercial / CBD",
-        "city": "Pune",
-        "authority": "PMC / PMRDA",
-        "source": "UDCPR-2020 & PMRDA Development Plan 2041",
-        "max_fsi": 2.5,
-        "max_floors": 12,
-        "max_height_m": 45.0,
-        "min_setback_front_m": 4.5,
-        "min_setback_side_m": 3.0,
-        "min_setback_rear_m": 3.0,
-        "max_coverage_pct": 45.0,
-        "permitted_uses": [
-            "Corporate offices", "Shopping malls", "Hotels",
-            "Multiplexes", "Convention centres"
-        ],
-        "conditional_uses": [
-            "Residential (upper floors)",
-            "Hospital", "Educational institution"
-        ],
+    "Bangalore": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Bangalore",
+            "authority": "BBMP / BDA",
+            "source": "BBMP Building Bye-Laws & RMP 2031",
+            "max_fsi": 1.75,
+            "max_floors": 4,
+            "max_height_m": 15.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 55.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Bangalore",
+            "authority": "BBMP / BDA",
+            "source": "BBMP Building Bye-Laws & RMP 2031",
+            "max_fsi": 2.25,
+            "max_floors": 6,
+            "max_height_m": 18.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Bangalore",
+            "authority": "BBMP / BDA",
+            "source": "BBMP Building Bye-Laws & RMP 2031",
+            "max_fsi": 2.5,
+            "max_floors": 10,
+            "max_height_m": 30.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-    "pune:I": {
-        "zone_code": "I",
-        "zone_name": "Industrial",
-        "city": "Pune",
-        "authority": "PMC / PMRDA",
-        "source": "UDCPR-2020 & PMRDA Development Plan 2041",
-        "max_fsi": 1.0,
-        "max_floors": 3,
-        "max_height_m": 15.0,
-        "min_setback_front_m": 6.0,
-        "min_setback_side_m": 4.5,
-        "min_setback_rear_m": 4.5,
-        "max_coverage_pct": 60.0,
-        "permitted_uses": [
-            "Manufacturing", "Warehousing", "Logistics",
-            "IT parks", "Processing units"
-        ],
-        "conditional_uses": [
-            "Worker housing (within complex)",
-            "Canteen / Cafeteria"
-        ],
+    "Hyderabad": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Hyderabad",
+            "authority": "HMDA / GHMC",
+            "source": "HMDA Zoning Regulations",
+            "max_fsi": 1.5,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Hyderabad",
+            "authority": "HMDA / GHMC",
+            "source": "HMDA Zoning Regulations",
+            "max_fsi": 1.75,
+            "max_floors": 6,
+            "max_height_m": 18.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 55.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Hyderabad",
+            "authority": "HMDA / GHMC",
+            "source": "HMDA Zoning Regulations",
+            "max_fsi": 2.5,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-
-    # ========== MUMBAI (BMC) ==========
-    "mumbai:R1": {
-        "zone_code": "R1",
-        "zone_name": "Low Density Residential (Suburbs)",
-        "city": "Mumbai",
-        "authority": "BMC (MCGM)",
-        "source": "DCPR 2034 — Development Control & Promotion Regulations",
-        "max_fsi": 1.33,
-        "max_floors": 5,
-        "max_height_m": 18.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.0,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 50.0,
-        "permitted_uses": [
-            "Detached housing", "Row houses",
-            "Parks", "Schools"
-        ],
-        "conditional_uses": [
-            "Home office", "Small retail (ground floor)"
-        ],
+    "Chennai": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Chennai",
+            "authority": "CMDA / GCC",
+            "source": "CMDA Building Rules",
+            "max_fsi": 1.5,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Chennai",
+            "authority": "CMDA / GCC",
+            "source": "CMDA Building Rules",
+            "max_fsi": 2.0,
+            "max_floors": 6,
+            "max_height_m": 18.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Chennai",
+            "authority": "CMDA / GCC",
+            "source": "CMDA Building Rules",
+            "max_fsi": 2.5,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-    "mumbai:R2": {
-        "zone_code": "R2",
-        "zone_name": "Medium–High Density Residential",
-        "city": "Mumbai",
-        "authority": "BMC (MCGM)",
-        "source": "DCPR 2034 — Development Control & Promotion Regulations",
-        "max_fsi": 2.5,
-        "max_floors": 15,
-        "max_height_m": 50.0,
-        "min_setback_front_m": 4.5,
-        "min_setback_side_m": 3.0,
-        "min_setback_rear_m": 3.0,
-        "max_coverage_pct": 40.0,
-        "permitted_uses": [
-            "Apartments", "High-rise towers", "Group housing",
-            "Parks", "Schools", "Hospitals"
-        ],
-        "conditional_uses": [
-            "Mixed-use retail (ground + first floor)",
-            "Gym / Community centre"
-        ],
+    "Ahmedabad": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Ahmedabad",
+            "authority": "AUDA / AMC",
+            "source": "AUDA GDCR",
+            "max_fsi": 1.2,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Ahmedabad",
+            "authority": "AUDA / AMC",
+            "source": "AUDA GDCR",
+            "max_fsi": 1.8,
+            "max_floors": 5,
+            "max_height_m": 15.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Ahmedabad",
+            "authority": "AUDA / AMC",
+            "source": "AUDA GDCR",
+            "max_fsi": 2.0,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-    "mumbai:C1": {
-        "zone_code": "C1",
-        "zone_name": "Commercial",
-        "city": "Mumbai",
-        "authority": "BMC (MCGM)",
-        "source": "DCPR 2034 — Development Control & Promotion Regulations",
-        "max_fsi": 3.0,
-        "max_floors": 20,
-        "max_height_m": 70.0,
-        "min_setback_front_m": 6.0,
-        "min_setback_side_m": 4.5,
-        "min_setback_rear_m": 4.5,
-        "max_coverage_pct": 40.0,
-        "permitted_uses": [
-            "Offices", "Retail", "Hotels", "Malls",
-            "Entertainment", "Convention"
-        ],
-        "conditional_uses": [
-            "Residential (upper floors)", "Hospital"
-        ],
+    "Surat": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Surat",
+            "authority": "SUDA / SMC",
+            "source": "SUDA DCR",
+            "max_fsi": 1.2,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Surat",
+            "authority": "SUDA / SMC",
+            "source": "SUDA DCR",
+            "max_fsi": 1.8,
+            "max_floors": 5,
+            "max_height_m": 15.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 55.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Surat",
+            "authority": "SUDA / SMC",
+            "source": "SUDA DCR",
+            "max_fsi": 2.0,
+            "max_floors": 7,
+            "max_height_m": 20.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-    "mumbai:I": {
-        "zone_code": "I",
-        "zone_name": "Industrial",
-        "city": "Mumbai",
-        "authority": "BMC (MCGM)",
-        "source": "DCPR 2034 — Development Control & Promotion Regulations",
-        "max_fsi": 1.0,
-        "max_floors": 4,
-        "max_height_m": 15.0,
-        "min_setback_front_m": 6.0,
-        "min_setback_side_m": 4.5,
-        "min_setback_rear_m": 4.5,
-        "max_coverage_pct": 55.0,
-        "permitted_uses": [
-            "Manufacturing", "Warehousing", "Logistics"
-        ],
-        "conditional_uses": [
-            "IT / ITES (in designated parks)"
-        ],
+    "Nashik": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Nashik",
+            "authority": "NMC",
+            "source": "NMC DCR",
+            "max_fsi": 1.0,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Nashik",
+            "authority": "NMC",
+            "source": "NMC DCR",
+            "max_fsi": 1.5,
+            "max_floors": 5,
+            "max_height_m": 15.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 2.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Nashik",
+            "authority": "NMC",
+            "source": "NMC DCR",
+            "max_fsi": 2.0,
+            "max_floors": 7,
+            "max_height_m": 20.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
-
-    # ========== BANGALORE (BBMP) ==========
-    "bangalore:R1": {
-        "zone_code": "R1",
-        "zone_name": "Low Density Residential",
-        "city": "Bangalore",
-        "authority": "BBMP / BDA",
-        "source": "BBMP Building Bye-Laws & RMP 2031",
-        "max_fsi": 1.5,
-        "max_floors": 4,
-        "max_height_m": 15.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 1.5,
-        "min_setback_rear_m": 1.5,
-        "max_coverage_pct": 55.0,
-        "permitted_uses": [
-            "Independent houses", "Villas", "Row houses",
-            "Parks", "Primary school"
-        ],
-        "conditional_uses": [
-            "Home-based professional office"
-        ],
-    },
-    "bangalore:R2": {
-        "zone_code": "R2",
-        "zone_name": "Medium–High Density Residential",
-        "city": "Bangalore",
-        "authority": "BBMP / BDA",
-        "source": "BBMP Building Bye-Laws & RMP 2031",
-        "max_fsi": 2.25,
-        "max_floors": 10,
-        "max_height_m": 35.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.0,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 50.0,
-        "permitted_uses": [
-            "Apartments", "Group housing",
-            "Parks", "Schools", "Clinics"
-        ],
-        "conditional_uses": [
-            "Mixed-use (ground floor retail)",
-            "Co-working space"
-        ],
-    },
-    "bangalore:C1": {
-        "zone_code": "C1",
-        "zone_name": "Local Commercial",
-        "city": "Bangalore",
-        "authority": "BBMP / BDA",
-        "source": "BBMP Building Bye-Laws & RMP 2031",
-        "max_fsi": 2.5,
-        "max_floors": 8,
-        "max_height_m": 28.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.5,
-        "min_setback_rear_m": 2.5,
-        "max_coverage_pct": 50.0,
-        "permitted_uses": [
-            "Retail", "Offices", "Restaurants",
-            "Banks", "Showrooms"
-        ],
-        "conditional_uses": [
-            "Residential (upper floors)", "Clinic"
-        ],
-    },
-    "bangalore:C2": {
-        "zone_code": "C2",
-        "zone_name": "Central Commercial / CBD",
-        "city": "Bangalore",
-        "authority": "BBMP / BDA",
-        "source": "BBMP Building Bye-Laws & RMP 2031",
-        "max_fsi": 3.25,
-        "max_floors": 15,
-        "max_height_m": 50.0,
-        "min_setback_front_m": 6.0,
-        "min_setback_side_m": 4.5,
-        "min_setback_rear_m": 4.5,
-        "max_coverage_pct": 45.0,
-        "permitted_uses": [
-            "Corporate offices", "Shopping malls", "Hotels",
-            "Convention centres", "Multiplexes"
-        ],
-        "conditional_uses": [
-            "Residential (upper floors)", "Hospital"
-        ],
-    },
-    "bangalore:I": {
-        "zone_code": "I",
-        "zone_name": "Industrial",
-        "city": "Bangalore",
-        "authority": "BBMP / BDA",
-        "source": "BBMP Building Bye-Laws & RMP 2031",
-        "max_fsi": 1.5,
-        "max_floors": 4,
-        "max_height_m": 15.0,
-        "min_setback_front_m": 6.0,
-        "min_setback_side_m": 4.5,
-        "min_setback_rear_m": 4.5,
-        "max_coverage_pct": 55.0,
-        "permitted_uses": [
-            "Manufacturing", "Warehousing", "IT parks",
-            "Logistics", "Processing"
-        ],
-        "conditional_uses": [
-            "Worker housing", "Canteen"
-        ],
-    },
-
-    # ========== INDIA (PAN-INDIA FALLBACK BASELINES) ==========
-    # Used when city-specific zoning database is unavailable.
-    # Conservative defaults; local ULB/DCR should be verified for approvals.
-    "india:R1": {
-        "zone_code": "R1",
-        "zone_name": "Low Density Residential (Pan-India Baseline)",
-        "city": "India",
-        "authority": "Local ULB / Development Authority",
-        "source": "Pan-India conservative zoning baseline (fallback)",
-        "max_fsi": 1.2,
-        "max_floors": 3,
-        "max_height_m": 12.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 1.5,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 50.0,
-        "permitted_uses": ["Independent houses", "Row housing", "Parks", "Primary school"],
-        "conditional_uses": ["Home office", "Neighbourhood convenience retail"],
-    },
-    "india:R2": {
-        "zone_code": "R2",
-        "zone_name": "Medium Density Residential (Pan-India Baseline)",
-        "city": "India",
-        "authority": "Local ULB / Development Authority",
-        "source": "Pan-India conservative zoning baseline (fallback)",
-        "max_fsi": 1.8,
-        "max_floors": 5,
-        "max_height_m": 18.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.0,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 45.0,
-        "permitted_uses": ["Apartments", "Group housing", "Schools", "Clinics"],
-        "conditional_uses": ["Ground-floor local retail", "Community facilities"],
-    },
-    "india:C1": {
-        "zone_code": "C1",
-        "zone_name": "Local Commercial (Pan-India Baseline)",
-        "city": "India",
-        "authority": "Local ULB / Development Authority",
-        "source": "Pan-India conservative zoning baseline (fallback)",
-        "max_fsi": 2.0,
-        "max_floors": 5,
-        "max_height_m": 20.0,
-        "min_setback_front_m": 3.0,
-        "min_setback_side_m": 2.0,
-        "min_setback_rear_m": 2.0,
-        "max_coverage_pct": 50.0,
-        "permitted_uses": ["Retail", "Offices", "Restaurants", "Banks"],
-        "conditional_uses": ["Upper-floor residential", "Small clinics"],
-    },
-    "india:C2": {
-        "zone_code": "C2",
-        "zone_name": "Central Commercial / CBD (Pan-India Baseline)",
-        "city": "India",
-        "authority": "Local ULB / Development Authority",
-        "source": "Pan-India conservative zoning baseline (fallback)",
-        "max_fsi": 2.5,
-        "max_floors": 8,
-        "max_height_m": 30.0,
-        "min_setback_front_m": 4.5,
-        "min_setback_side_m": 3.0,
-        "min_setback_rear_m": 3.0,
-        "max_coverage_pct": 45.0,
-        "permitted_uses": ["Corporate offices", "Retail centers", "Hotels"],
-        "conditional_uses": ["Mixed-use residential above commercial"],
-    },
-    "india:I": {
-        "zone_code": "I",
-        "zone_name": "Industrial (Pan-India Baseline)",
-        "city": "India",
-        "authority": "Local ULB / Development Authority",
-        "source": "Pan-India conservative zoning baseline (fallback)",
-        "max_fsi": 1.5,
-        "max_floors": 4,
-        "max_height_m": 18.0,
-        "min_setback_front_m": 6.0,
-        "min_setback_side_m": 4.5,
-        "min_setback_rear_m": 4.5,
-        "max_coverage_pct": 55.0,
-        "permitted_uses": ["Manufacturing", "Warehousing", "Logistics", "Industrial services"],
-        "conditional_uses": ["Worker amenities", "Canteen"],
+    "Navi Mumbai": {
+        "R1": {
+            "zone_code": "R1",
+            "zone_name": "Low Density Residential",
+            "city": "Navi Mumbai",
+            "authority": "CIDCO / NMMC",
+            "source": "CIDCO Regulations",
+            "max_fsi": 1.0,
+            "max_floors": 3,
+            "max_height_m": 10.0,
+            "min_setback_front_m": 3.0,
+            "min_setback_side_m": 1.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 50.0,
+            "permitted_uses": ["residential"],
+        },
+        "R2": {
+            "zone_code": "R2",
+            "zone_name": "Medium Density Residential",
+            "city": "Navi Mumbai",
+            "authority": "CIDCO / NMMC",
+            "source": "CIDCO Regulations",
+            "max_fsi": 2.0,
+            "max_floors": 8,
+            "max_height_m": 24.0,
+            "min_setback_front_m": 4.5,
+            "min_setback_side_m": 2.5,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["residential", "mixed"],
+        },
+        "C1": {
+            "zone_code": "C1",
+            "zone_name": "Commercial",
+            "city": "Navi Mumbai",
+            "authority": "CIDCO / NMMC",
+            "source": "CIDCO Regulations",
+            "max_fsi": 2.5,
+            "max_floors": 10,
+            "max_height_m": 30.0,
+            "min_setback_front_m": 6.0,
+            "min_setback_side_m": 3.0,
+            "min_setback_rear_m": 3.0,
+            "max_coverage_pct": 60.0,
+            "permitted_uses": ["commercial", "mixed"],
+        },
     },
 }
 
-
 # ---------------------------------------------------------------------------
-# Default mock rules (backward-compatible fallback)
+# Default mock rules (when no city or zone is detected)
 # ---------------------------------------------------------------------------
 DEFAULT_MOCK_RULES: Dict[str, Any] = {
-    "zone_code": "MOCK",
-    "zone_name": "Default Mock Zone",
-    "city": "—",
-    "authority": "—",
-    "source": "Mock rules (no address provided)",
-    "max_fsi": 3.0,
-    "max_floors": 5,
-    "max_height_m": 24.0,
+    "zone_code": "DEFAULT",
+    "zone_name": "Default Zone",
+    "city": "Unknown",
+    "authority": "N/A",
+    "source": "Default rules (no city detected)",
+    "max_fsi": 1.5,
+    "max_floors": 4,
+    "max_height_m": 15.0,
     "min_setback_front_m": 3.0,
-    "min_setback_side_m": 3.0,
+    "min_setback_side_m": 2.0,
     "min_setback_rear_m": 3.0,
-    "max_coverage_pct": 60.0,
-    "permitted_uses": ["Residential", "Commercial"],
-    "conditional_uses": [],
+    "max_coverage_pct": 50.0,
+    "permitted_uses": ["residential", "commercial"],
 }
 
+# Indian state names for address-based India detection
+INDIAN_STATES = [
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+    "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+    "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya",
+    "mizoram", "nagaland", "odisha", "orissa", "punjab", "rajasthan",
+    "sikkim", "tamil nadu", "telangana", "tripura", "uttar pradesh",
+    "uttarakhand", "west bengal", "india",
+]
 
-def detect_city(lat: float, lng: float) -> Optional[str]:
-    """Detect city from lat/lng using bounding boxes."""
-    for city, (lat_min, lat_max, lng_min, lng_max) in CITY_BOUNDARIES.items():
-        if lat_min <= lat <= lat_max and lng_min <= lng <= lng_max:
-            return city
+
+def detect_city_from_address(address: str) -> Optional[str]:
+    """
+    Detect a top-10 city from a Nominatim address string.
+    Checks all city aliases against all parts of the address.
+    Returns canonical city name or None.
+    """
+    addr_lower = address.lower()
+
+    # Check Navi Mumbai BEFORE Mumbai (since "navi mumbai" contains "mumbai")
+    for alias in CITY_ALIASES.get("Navi Mumbai", []):
+        if alias in addr_lower:
+            return "Navi Mumbai"
+
+    # Check all other cities
+    for city, aliases in CITY_ALIASES.items():
+        if city == "Navi Mumbai":
+            continue  # Already checked
+        for alias in aliases:
+            if alias in addr_lower:
+                return city
+
     return None
 
 
-def is_india_coordinate(lat: float, lng: float) -> bool:
-    """Approximate India geofence check for nationwide zoning fallback."""
-    lat_min, lat_max, lng_min, lng_max = INDIA_BOUNDARY
-    return lat_min <= lat <= lat_max and lng_min <= lng <= lng_max
+def is_indian_address(address: str) -> bool:
+    """Check if address appears to be from India."""
+    addr_lower = address.lower()
+    for state in INDIAN_STATES:
+        if state in addr_lower:
+            return True
+    return False
 
 
-def get_zone(city: str, zone_code: str) -> Optional[Dict[str, Any]]:
-    """Look up zone rules by city and zone code."""
-    key = f"{city.lower()}:{zone_code.upper()}"
-    return ZONE_DATABASE.get(key)
+def get_city_zone_codes(city: str) -> List[str]:
+    """Return available zone codes for a detected city."""
+    city_data = CITY_ZONES.get(city, {})
+    return list(city_data.keys())
 
 
-def get_city_zones(city: str) -> List[str]:
-    """Return all zone codes available for a given city."""
-    prefix = city.lower() + ":"
-    return [
-        data["zone_code"]
-        for key, data in ZONE_DATABASE.items()
-        if key.startswith(prefix)
-    ]
+def get_zone_rules(city: str, zone_code: str) -> Optional[Dict[str, Any]]:
+    """Get hardcoded zone rules for a city + zone code."""
+    city_data = CITY_ZONES.get(city, {})
+    return city_data.get(zone_code)
 
 
-def get_default_zone(city: str) -> Dict[str, Any]:
-    """Return the default zone (R2) for a city, or India R2 fallback."""
-    zone = get_zone(city, "R2")
-    if zone:
-        return zone
-    india_zone = get_zone("india", "R2")
-    if india_zone:
-        return dict(india_zone)
+def get_default_zone_for_city(city: str) -> Dict[str, Any]:
+    """Return R2 (or first zone) as default for a city."""
+    city_data = CITY_ZONES.get(city, {})
+    if "R2" in city_data:
+        return dict(city_data["R2"])
+    if "Residential" in city_data:
+        return dict(city_data["Residential"])
+    if city_data:
+        first_key = next(iter(city_data))
+        return dict(city_data[first_key])
     return dict(DEFAULT_MOCK_RULES)

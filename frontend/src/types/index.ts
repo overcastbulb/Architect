@@ -112,6 +112,11 @@ export interface RulesApplied {
   max_coverage_pct: number;
 }
 
+export interface AIReasoning {
+  rule_reasoning: Record<string, string>;
+  summary: string;
+}
+
 export interface ZoningReport {
   overall_status: "PASS" | "WARNING" | "FAIL";
   violations: string[];
@@ -123,6 +128,7 @@ export interface ZoningReport {
   zone_info: ZoneInfo | null;
   rules: ZoningRule[];
   rules_applied: RulesApplied;
+  ai_reasoning?: AIReasoning;
 }
 
 export interface UnifiedResponse {

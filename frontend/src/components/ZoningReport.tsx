@@ -115,6 +115,44 @@ function OverallBadge({ status }: { status: string }) {
   );
 }
 
+function AIReasoningText({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <div
+      className="mt-1.5 pl-0.5 animate-fade-in"
+      style={{ animationDuration: "0.6s" }}
+    >
+      <p className="text-[11px] leading-relaxed italic text-[#8892b0]">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function AIVerdictBox({ summary }: { summary: string }) {
+  if (!summary) return null;
+  return (
+    <div
+      className="rounded-xl border border-[rgba(232,255,71,0.15)] bg-[#0d1117] p-4 space-y-2.5 animate-fade-in"
+      style={{ animationDuration: "0.8s", animationDelay: "0.3s", animationFillMode: "both" }}
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg bg-[rgba(232,255,71,0.1)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L14.09 8.26L20.18 8.27L15.18 12.14L16.82 18.27L12 14.77L7.18 18.27L8.82 12.14L3.82 8.27L9.91 8.26L12 2Z" stroke="#e8ff47" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(232,255,71,0.15)" />
+          </svg>
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold text-[#e8ff47] uppercase tracking-widest">AI Verdict</h4>
+        </div>
+      </div>
+      <p className="text-[12px] leading-relaxed text-[#9ca3be] pl-0.5">
+        {summary}
+      </p>
+    </div>
+  );
+}
+
 function SkeletonReport() {
   return (
     <div className="p-5 space-y-4 animate-fade-in">
@@ -157,6 +195,10 @@ function EmptyState() {
 export default function ZoningReport({ zoning, layout, loading }: Props) {
   if (loading) return <SkeletonReport />;
   if (!zoning || !layout) return <EmptyState />;
+
+  const reasoning = zoning.ai_reasoning;
+  const ruleReasoning = reasoning?.rule_reasoning || {};
+  const summary = reasoning?.summary || "";
 
   return (
     <div className="p-5 space-y-5 animate-slide-up overflow-y-auto h-full">
@@ -218,7 +260,7 @@ export default function ZoningReport({ zoning, layout, loading }: Props) {
       {/* Overall status */}
       <OverallBadge status={zoning.overall_status} />
 
-      {/* Rule-by-rule compliance */}
+      {/* Rule-by-rule compliance with AI reasoning */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <div className="w-1 h-3 bg-arch-accent rounded-full" />
@@ -231,23 +273,35 @@ export default function ZoningReport({ zoning, layout, loading }: Props) {
           {zoning.rules.map((rule: ZoningRule, i: number) => (
             <div
               key={i}
-              className="flex items-center justify-between p-3 bg-arch-surface border border-arch-border rounded-lg hover:border-arch-border-2 transition-colors"
+              className="p-3 bg-arch-surface border border-arch-border rounded-lg hover:border-arch-border-2 transition-colors"
             >
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium text-arch-text">
-                  {rule.rule_name}
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-medium text-arch-text">
+                    {rule.rule_name}
+                  </div>
+                  <div className="text-[10px] text-arch-text-dim font-mono mt-0.5">
+                    {rule.message}
+                  </div>
                 </div>
-                <div className="text-[10px] text-arch-text-dim font-mono mt-0.5">
-                  {rule.message}
+                <div className="shrink-0 ml-2">
+                  <StatusBadge status={rule.status} />
                 </div>
               </div>
-              <div className="shrink-0 ml-2">
-                <StatusBadge status={rule.status} />
-              </div>
+              {/* AI Reasoning for this rule */}
+              <AIReasoningText text={ruleReasoning[rule.rule_name] || ""} />
             </div>
           ))}
         </div>
       </div>
+
+      {/* AI Verdict Summary */}
+      {summary && (
+        <>
+          <hr className="border-arch-border" />
+          <AIVerdictBox summary={summary} />
+        </>
+      )}
 
       {/* Violations detail */}
       {zoning.violations.length > 0 && (

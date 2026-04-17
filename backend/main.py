@@ -13,6 +13,7 @@ from layout_generator import generate_layout
 from zoning_checker import check_zoning
 from llm_client import interpret_prompt
 from zone_classifier import classify_zone
+from reasoning_client import generate_reasoning
 
 app = FastAPI(title="AI Architecture API", version="3.0.0")
 
@@ -148,9 +149,10 @@ async def unified_generate(data: GenerateInput):
 
     # Step 2: Classify zone if address is provided
     zone_rules = None
+    detection_info = {"type": "default", "city": "Unknown", "message": "Address set — using default zoning rules"}
     if data.address and data.lat is not None and data.lng is not None:
         try:
-            zone_rules = await classify_zone(
+            zone_rules, detection_info = await classify_zone(
                 address=data.address,
                 lat=data.lat,
                 lng=data.lng,
@@ -161,6 +163,7 @@ async def unified_generate(data: GenerateInput):
             traceback.print_exc()
             # Zone classification failure is non-fatal — fall back to mock
             zone_rules = None
+            detection_info = {"type": "default", "city": "Unknown", "message": "Address set — using default zoning rules"}
 
     # Step 3: Generate layout
     layout = generate_layout(
@@ -181,6 +184,32 @@ async def unified_generate(data: GenerateInput):
         building_length=layout["building_length"],
         zone_rules=zone_rules,
     )
+
+    # Step 5: Generate AI reasoning for zoning results
+    zoning_for_reasoning = {
+        "rules": zoning["rules"],
+        "zone_info": zoning["zone_info"],
+        "fsi": zoning["fsi"],
+        "coverage": zoning["coverage"],
+        "building_height": zoning["building_height"],
+        "setback_x": zoning["setback_x"],
+        "setback_y": zoning["setback_y"],
+    }
+    layout_for_reasoning = {
+        "building_width": layout["building_width"],
+        "building_length": layout["building_length"],
+    }
+    try:
+        ai_reasoning = await generate_reasoning(
+            zoning=zoning_for_reasoning,
+            params=params,
+            layout=layout_for_reasoning,
+            groq_api_key=server_groq_api_key,
+        )
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        ai_reasoning = {"rule_reasoning": {}, "summary": ""}
 
     return {
         "params": params,
@@ -204,5 +233,7 @@ async def unified_generate(data: GenerateInput):
             "zone_info": zoning["zone_info"],
             "rules": zoning["rules"],
             "rules_applied": zoning["rules_applied"],
+            "ai_reasoning": ai_reasoning,
+            "detection_info": detection_info,
         },
     }

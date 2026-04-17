@@ -338,35 +338,77 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Rule-by-rule results (NEW) */}
+              {/* Rule-by-rule results with AI Reasoning */}
               {zoning.rules && zoning.rules.length > 0 && (
                 <div className="space-y-1.5">
                   {zoning.rules.map((rule, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg border border-arch-border bg-arch-bg"
+                      className="px-3 py-2.5 rounded-lg border border-arch-border bg-arch-bg"
                     >
-                      <div>
-                        <span className="text-xs text-arch-text">{rule.rule_name}</span>
-                        <span className="text-xs text-arch-text-dim ml-2">({rule.message})</span>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-arch-text">{rule.rule_name}</span>
+                          <span className="text-xs text-arch-text-dim ml-2">({rule.message})</span>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium ${
+                            rule.status === "OK"
+                              ? "bg-arch-pass/15 text-arch-pass border border-arch-pass/30"
+                              : rule.status === "WARNING"
+                              ? "bg-arch-warn/15 text-arch-warn border border-arch-warn/30"
+                              : "bg-arch-fail/15 text-arch-fail border border-arch-fail/30"
+                          }`}
+                        >
+                          {rule.status === "OK" ? "OK" : rule.status === "WARNING" ? "WARN" : "FAIL"}
+                        </span>
                       </div>
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium ${
-                          rule.status === "OK"
-                            ? "bg-arch-pass/15 text-arch-pass border border-arch-pass/30"
-                            : rule.status === "WARNING"
-                            ? "bg-arch-warn/15 text-arch-warn border border-arch-warn/30"
-                            : "bg-arch-fail/15 text-arch-fail border border-arch-fail/30"
-                        }`}
-                      >
-                        {rule.status === "OK" ? "OK" : rule.status === "WARNING" ? "WARN" : "FAIL"}
-                      </span>
+                      {/* AI Reasoning for this rule */}
+                      {zoning.ai_reasoning?.rule_reasoning?.[rule.rule_name] && (
+                        <p
+                          className="mt-1.5 text-[11px] leading-relaxed italic animate-fade-in"
+                          style={{ color: "#8892b0", animationDuration: "0.6s" }}
+                        >
+                          {zoning.ai_reasoning.rule_reasoning[rule.rule_name]}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Violations (ORIGINAL) */}
+              {/* AI Verdict Summary Box */}
+              {zoning.ai_reasoning?.summary && (
+                <div
+                  className="rounded-xl border p-4 space-y-2.5 animate-fade-in"
+                  style={{
+                    borderColor: "rgba(232,255,71,0.15)",
+                    background: "#0d1117",
+                    animationDuration: "0.8s",
+                    animationDelay: "0.3s",
+                    animationFillMode: "both",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: "rgba(232,255,71,0.1)" }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L14.09 8.26L20.18 8.27L15.18 12.14L16.82 18.27L12 14.77L7.18 18.27L8.82 12.14L3.82 8.27L9.91 8.26L12 2Z" stroke="#e8ff47" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(232,255,71,0.15)" />
+                      </svg>
+                    </div>
+                    <h4 className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#e8ff47" }}>
+                      AI Verdict
+                    </h4>
+                  </div>
+                  <p className="text-[12px] leading-relaxed pl-0.5" style={{ color: "#9ca3be" }}>
+                    {zoning.ai_reasoning.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Violations */}
               {zoning.violations.length > 0 ? (
                 <ul className="space-y-1 text-sm text-arch-fail">
                   {zoning.violations.map((violation) => (

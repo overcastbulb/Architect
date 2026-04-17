@@ -16,9 +16,12 @@ module.exports = {
         arch: {
           bg: "#0a0c10",
           surface: "#111318",
+          "surface-2": "#0d1117",
           border: "#1e2230",
+          "border-2": "#2a2f42",
           accent: "#e8ff47",
           "accent-dim": "#b8cc2a",
+          "accent-light": "#d4e84a",
           muted: "#3a4055",
           text: "#c8d0e8",
           "text-dim": "#6b7394",

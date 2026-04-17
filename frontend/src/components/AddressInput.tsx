@@ -15,6 +15,20 @@ interface NominatimResult {
   lon: string;
 }
 
+
+const CITIES = [
+  { label: "Navi Mumbai", keywords: ["navi mumbai", "new mumbai", "vashi", "kharghar", "belapur", "nerul", "airoli", "panvel", "kopar khairane", "sanpada", "seawoods", "ulwe", "taloja", "cidco"], lat: 19.0368, lng: 73.0158 },
+  { label: "Mumbai", keywords: ["mumbai", "bombay", "bandra", "andheri", "worli", "powai", "malad", "borivali", "thane", "dadar", "kurla", "goregaon", "juhu", "colaba", "bkc", "brihanmumbai"], lat: 19.076, lng: 72.8777 },
+  { label: "Pune", keywords: ["pune", "pmrda", "pimpri", "chinchwad", "hinjewadi", "kothrud", "hadapsar", "wakad", "baner", "koregaon", "viman nagar", "kharadi", "aundh", "shivajinagar"], lat: 18.5204, lng: 73.8567 },
+  { label: "Delhi", keywords: ["delhi", "new delhi", "nct of delhi", "dwarka", "rohini", "saket", "karol bagh", "lajpat nagar", "vasant kunj", "janakpuri", "pitampura", "noida", "gurgaon", "gurugram"], lat: 28.6139, lng: 77.209 },
+  { label: "Bangalore", keywords: ["bangalore", "bengaluru", "whitefield", "koramangala", "indiranagar", "jayanagar", "hsr layout", "electronic city", "marathahalli", "hebbal", "yelahanka", "jp nagar", "btm"], lat: 12.9716, lng: 77.5946 },
+  { label: "Hyderabad", keywords: ["hyderabad", "secunderabad", "hitec city", "hitech city", "gachibowli", "madhapur", "banjara hills", "jubilee hills", "kukatpally", "miyapur", "kondapur", "begumpet", "ameerpet", "charminar", "telangana"], lat: 17.385, lng: 78.4867 },
+  { label: "Chennai", keywords: ["chennai", "madras", "anna nagar", "t nagar", "adyar", "velachery", "tambaram", "porur", "guindy", "sholinganallur", "mylapore", "perambur", "nungambakkam", "kodambakkam"], lat: 13.0827, lng: 80.2707 },
+  { label: "Ahmedabad", keywords: ["ahmedabad", "ahemdabad", "ahmadabad", "satellite", "bodakdev", "prahlad nagar", "thaltej", "vastrapur", "navrangpura", "maninagar", "bopal", "sg highway"], lat: 23.0225, lng: 72.5714 },
+  { label: "Surat", keywords: ["surat", "adajan", "vesu", "piplod", "athwa", "varachha", "katargam", "dumas"], lat: 21.1702, lng: 72.8311 },
+  { label: "Nashik", keywords: ["nashik", "nasik", "nashick", "gangapur", "panchavati", "cidco nashik"], lat: 19.9975, lng: 73.7898 },
+];
+
 // Indian cities for keyword-based detection (fallback)
 const CITY_CONSTRAINTS: Record<string, {
   zone_code: string;

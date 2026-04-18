@@ -136,7 +136,7 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-10 md:py-14 space-y-8 md:space-y-10">
         {/* ============ HERO ============ */}
         <section className="text-center space-y-3">
-          <p className="text-sm font-mono uppercase tracking-[0.2em] text-arch-accent">architect.ai</p>
+          <p className="text-sm font-mono uppercase tracking-[0.2em] text-arch-accent">architect ai</p>
           <h1 className="font-display text-3xl md:text-5xl font-700 text-white leading-tight">
             Design buildings from a prompt and instantly check zoning feasibility.
           </h1>

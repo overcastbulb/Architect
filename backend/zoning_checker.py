@@ -102,10 +102,10 @@ def check_zoning(
             f"Height violation: {building_height:.0f}m exceeds maximum {max_height_m:.0f}m"
         )
 
-    # ---------- Rule 4: Front/Rear Setback ----------
+    # ---------- Rule 4: Front Setback ----------
     front_setback_status = _get_status_inverse(setback_y, min_setback_front)
     rule_results.append({
-        "rule_name": "Front/Rear Setback",
+        "rule_name": "Front Setback",
         "limit": min_setback_front,
         "actual": round(setback_y, 1),
         "unit": "m",
@@ -114,10 +114,25 @@ def check_zoning(
     })
     if front_setback_status == "VIOLATION":
         violations.append(
-            f"Front/rear setback violation: {setback_y:.1f}m is less than minimum {min_setback_front:.1f}m"
+            f"Front setback violation: {setback_y:.1f}m is less than minimum {min_setback_front:.1f}m"
         )
 
-    # ---------- Rule 5: Side Setback ----------
+    # ---------- Rule 5: Rear Setback ----------
+    rear_setback_status = _get_status_inverse(setback_y, min_setback_rear)
+    rule_results.append({
+        "rule_name": "Rear Setback",
+        "limit": min_setback_rear,
+        "actual": round(setback_y, 1),
+        "unit": "m",
+        "status": rear_setback_status,
+        "message": f"{setback_y:.1f}m vs min {min_setback_rear:.1f}m",
+    })
+    if rear_setback_status == "VIOLATION":
+        violations.append(
+            f"Rear setback violation: {setback_y:.1f}m is less than minimum {min_setback_rear:.1f}m"
+        )
+
+    # ---------- Rule 6: Side Setback ----------
     side_setback_status = _get_status_inverse(setback_x, min_setback_side)
     rule_results.append({
         "rule_name": "Side Setback",
@@ -132,7 +147,7 @@ def check_zoning(
             f"Side setback violation: {setback_x:.1f}m is less than minimum {min_setback_side:.1f}m"
         )
 
-    # ---------- Rule 6: Building Coverage ----------
+    # ---------- Rule 7: Building Coverage ----------
     cov_status = _get_status(coverage_pct, max_coverage_pct)
     rule_results.append({
         "rule_name": "Ground Coverage",

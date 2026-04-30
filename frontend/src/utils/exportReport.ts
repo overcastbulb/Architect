@@ -7,25 +7,46 @@ interface ExportProps {
     addressData: AddressData | null;
 }
 
+function escapeHtml(str: string): string {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 export function generatePDFReport({ zoning, layout, interpretation, addressData }: ExportProps) {
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
+    const safeAddress = escapeHtml(addressData?.address || "No address specified");
+    const safeBuildingType = escapeHtml(interpretation?.building_type || "N/A");
+    const safeSummary = escapeHtml(zoning.ai_reasoning?.summary || "");
+    const safeZoneCode = escapeHtml(zoning.zone_info?.zone_code || "");
+    const safeZoneName = escapeHtml(zoning.zone_info?.zone_name || "");
+    const safeZoneCity = escapeHtml(zoning.zone_info?.city || "");
+    const safeZoneAuthority = escapeHtml(zoning.zone_info?.authority || "");
+    const safeZoneSource = escapeHtml(zoning.zone_info?.source || "");
+
     const statusColor = zoning.overall_status === "PASS" ? "#22c55e" : zoning.overall_status === "WARNING" ? "#f59e0b" : "#ef4444";
 
-    const rulesHTML = zoning.rules.map(rule => {
+    const rulesHTML = zoning.rules.map((rule) => {
         const color = rule.status === "OK" ? "#22c55e" : rule.status === "WARNING" ? "#f59e0b" : "#ef4444";
-        const reasoning = zoning.ai_reasoning?.rule_reasoning?.[rule.rule_name] || "";
+        const safeRuleName = escapeHtml(rule.rule_name);
+        const safeRuleMessage = escapeHtml(rule.message);
+        const safeRuleStatus = escapeHtml(rule.status);
+        const reasoning = escapeHtml(zoning.ai_reasoning?.rule_reasoning?.[rule.rule_name] || "");
         return `
       <div style="border:1px solid #1e2230; border-radius:8px; padding:12px 14px; margin-bottom:8px; background:#0d1117;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <span style="font-size:12px; color:#c8d0e8; font-weight:600;">${rule.rule_name}</span>
-            <span style="font-size:11px; color:#6b7394; margin-left:8px;">${rule.message}</span>
+            <span style="font-size:12px; color:#c8d0e8; font-weight:600;">${safeRuleName}</span>
+            <span style="font-size:11px; color:#6b7394; margin-left:8px;">${safeRuleMessage}</span>
           </div>
           <span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; background:${color}22; color:${color}; border:1px solid ${color}44;">
-            ${rule.status}
+            ${safeRuleStatus}
           </span>
         </div>
         ${reasoning ? `<p style="font-size:11px; color:#8892b0; margin-top:6px; font-style:italic; line-height:1.5;">${reasoning}</p>` : ""}
@@ -70,7 +91,7 @@ export function generatePDFReport({ zoning, layout, interpretation, addressData 
         <div>
           <div class="logo">architect.ai</div>
           <div class="title">Zoning Feasibility Report</div>
-          <div class="meta">${addressData?.address || "No address specified"}</div>
+          <div class="meta">${safeAddress}</div>
           <div class="meta">Generated: ${dateStr} at ${timeStr}</div>
         </div>
         <div class="status-badge">${zoning.overall_status}</div>
@@ -80,10 +101,10 @@ export function generatePDFReport({ zoning, layout, interpretation, addressData 
       <div class="section">
         <div class="section-title">Zone Information</div>
         <div class="zone-badge">
-          <span class="zone-code">${zoning.zone_info.zone_code}</span>
+          <span class="zone-code">${safeZoneCode}</span>
           <div>
-            <div class="zone-name">${zoning.zone_info.zone_name}</div>
-            <div class="zone-auth">${zoning.zone_info.city} · ${zoning.zone_info.authority} · ${zoning.zone_info.source}</div>
+            <div class="zone-name">${safeZoneName}</div>
+            <div class="zone-auth">${safeZoneCity} · ${safeZoneAuthority} · ${safeZoneSource}</div>
           </div>
         </div>
       </div>
@@ -97,7 +118,7 @@ export function generatePDFReport({ zoning, layout, interpretation, addressData 
           <div class="metric"><div class="metric-label">Height</div><div class="metric-value">${zoning.building_height}m</div></div>
           <div class="metric"><div class="metric-label">Floors</div><div class="metric-value">${layout.floors}</div></div>
           <div class="metric"><div class="metric-label">Plot</div><div class="metric-value">${layout.dimensions.plot_width}×${layout.dimensions.plot_length}m</div></div>
-          <div class="metric"><div class="metric-label">Building Type</div><div class="metric-value">${interpretation?.building_type || "N/A"}</div></div>
+          <div class="metric"><div class="metric-label">Building Type</div><div class="metric-value">${safeBuildingType}</div></div>
         </div>
       </div>
 
@@ -109,7 +130,7 @@ export function generatePDFReport({ zoning, layout, interpretation, addressData 
       ${zoning.ai_reasoning?.summary ? `
       <div class="verdict">
         <div class="verdict-title">AI Verdict</div>
-        <div class="verdict-text">${zoning.ai_reasoning.summary}</div>
+        <div class="verdict-text">${safeSummary}</div>
       </div>
       ` : ""}
 

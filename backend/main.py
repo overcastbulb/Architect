@@ -16,10 +16,13 @@ from zone_classifier import classify_zone
 from reasoning_client import generate_reasoning
 
 app = FastAPI(title="AI Architecture API", version="3.0.0")
+allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
+if not allowed_origins:
+    allowed_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

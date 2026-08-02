@@ -396,7 +396,7 @@ export default function Home() {
 
   // Derive city and pick the right prompt set — updates instantly on address change
   const detectedCity = addressData ? detectCityFromAddress(addressData.address) : null;
-  const activePrompts = (detectedCity && CITY_PROMPTS[detectedCity]) ?? EXAMPLE_PROMPTS;
+  const activePrompts = (detectedCity && CITY_PROMPTS[detectedCity]) ? CITY_PROMPTS[detectedCity] : EXAMPLE_PROMPTS;
   const isCitySpecific = Boolean(detectedCity && CITY_PROMPTS[detectedCity]);
 
   // True once the user has ever clicked Generate (controls whether skeletons appear)

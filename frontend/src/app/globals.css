@@ -73,3 +73,29 @@ input[type='number']::-webkit-outer-spin-button {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* -------------------------------------------------------
+   Skeleton shimmer loader
+   Uses the 'shimmer' keyframe from tailwind.config.js
+   ------------------------------------------------------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: #1a1f2e;
+  border-radius: 6px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.045) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.6s linear infinite;
+}
+

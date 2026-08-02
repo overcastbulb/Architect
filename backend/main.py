@@ -16,6 +16,30 @@ from zone_classifier import classify_zone
 from reasoning_client import generate_reasoning
 
 app = FastAPI(title="AI Architecture API", version="3.0.0")
+
+
+# ---------------------------------------------------------------------------
+# Error sanitization — maps raw internal errors to clean user-facing messages
+# ---------------------------------------------------------------------------
+def _clean_error(message: str) -> str:
+    """Map internal error strings to friendly user-facing messages."""
+    m = message.lower()
+    if "timed out" in m or "timeout" in m:
+        return "The AI service is taking too long. Please try again in a moment."
+    if "could not reach" in m or "dns" in m or "network" in m:
+        return "Could not connect to the AI service. Please check your connection and try again."
+    if "key is not configured" in m or "configuration error" in m:
+        return "Server configuration error. Please contact support."
+    if "invalid or missing" in m or "401" in m or "403" in m:
+        return "Server configuration error. Please contact support."
+    if "could not understand" in m or "please rephrase" in m or "no json" in m:
+        return "Could not understand the building description. Please rephrase and try again."
+    if "prompt cannot be empty" in m or "prompt is empty" in m:
+        return "Please enter a building description."
+    # Generic fallback — never expose raw API text
+    return "Something went wrong. Please try again."
+
+
 allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
 if not allowed_origins:
     allowed_origins = ["*"]
@@ -60,12 +84,12 @@ def root():
 async def interpret(data: PromptInput):
     """Legacy endpoint — interprets prompt only."""
     if not data.prompt.strip():
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+        raise HTTPException(status_code=400, detail="Please enter a building description.")
     server_groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not server_groq_api_key:
         raise HTTPException(
             status_code=500,
-            detail="Server Groq key is not configured. Set GROQ_API_KEY and restart backend.",
+            detail="Server configuration error. Please contact support.",
         )
 
     try:
@@ -76,10 +100,7 @@ async def interpret(data: PromptInput):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        message = str(e)
-        if "Could not reach Groq API" in message:
-            raise HTTPException(status_code=503, detail=message)
-        raise HTTPException(status_code=400, detail=message)
+        raise HTTPException(status_code=400, detail=_clean_error(str(e)))
     return result
 
 
@@ -87,7 +108,7 @@ async def interpret(data: PromptInput):
 def generate(data: BuildingInput):
     """Legacy endpoint — generates layout from manual params."""
     if data.plot_width <= 0 or data.plot_length <= 0:
-        raise HTTPException(status_code=400, detail="Plot dimensions must be positive")
+        raise HTTPException(status_code=400, detail="Plot dimensions must be positive.")
 
     layout = generate_layout(
         plot_width=data.plot_width,
@@ -125,13 +146,13 @@ async def unified_generate(data: GenerateInput):
     Optionally accepts address/lat/lng for real zoning data.
     """
     if not data.prompt.strip():
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+        raise HTTPException(status_code=400, detail="Please enter a building description.")
 
     server_groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not server_groq_api_key:
         raise HTTPException(
             status_code=500,
-            detail="Server Groq key is not configured. Set GROQ_API_KEY and restart backend.",
+            detail="Server configuration error. Please contact support.",
         )
 
     # Step 1: Interpret the prompt via LLM
@@ -143,10 +164,7 @@ async def unified_generate(data: GenerateInput):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        message = str(e)
-        if "Could not reach Groq API" in message:
-            raise HTTPException(status_code=503, detail=message)
-        raise HTTPException(status_code=400, detail=message)
+        raise HTTPException(status_code=400, detail=_clean_error(str(e)))
 
     params = interpretation["params"]
 

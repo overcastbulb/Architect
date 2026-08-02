@@ -82,7 +82,7 @@ def _extract_json(text: str) -> Dict[str, Any]:
     if kv:
         return kv
 
-    raise ValueError(f"No JSON found in model response. Raw output: {original[:300]!r}")
+    raise ValueError("Could not understand the building description. Please rephrase and try again.")
 
 
 def _extract_kv_fallback(text: str) -> Dict[str, Any]:
@@ -210,13 +210,13 @@ async def interpret_prompt(user_prompt: str, groq_api_key: str) -> Dict[str, Any
     if response.status_code in (401, 403):
         raise ValueError("Groq API key is invalid or missing permissions")
     if response.status_code != 200:
-        raise ValueError(f"Groq request failed ({response.status_code}): {response.text[:300]}")
+        raise ValueError(f"Groq request failed with status {response.status_code}.")
 
     body = response.json()
     try:
         raw_text = _extract_content(body["choices"][0]["message"]["content"])
     except (KeyError, IndexError) as e:
-        raise ValueError(f"Unexpected Groq response shape: {json.dumps(body)[:300]}") from e
+        raise ValueError("Could not understand the building description. Please rephrase and try again.") from e
 
     parsed = _extract_json(raw_text)
     params = _apply_defaults(parsed)

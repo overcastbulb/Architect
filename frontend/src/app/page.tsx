@@ -721,12 +721,6 @@ export default function Home() {
                 Run Demo
               </button>
             </div>
-
-            {!hasSelectedAddress && (
-              <p className="text-xs text-arch-text-dim">
-                Select a site address first to enable prompt generation.
-              </p>
-            )}
           </form>
 
           {/* Inline validation error */}

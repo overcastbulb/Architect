@@ -515,56 +515,23 @@ export default function Home() {
     setIsRegenerating(true);
     setError(null);
 
-    // Pre-calculate actual buildable dimensions from plot size minus all setbacks.
-    // These are injected into the prompt so the AI cannot request a building
-    // larger than the physical space that remains after setbacks are applied.
-    const r = zoning.rules_applied;
-    const plotW = aiParams?.plot_width  ?? 15;
-    const plotL = aiParams?.plot_length ?? 20;
-    const buildableWidth  = plotW - 2 * r.min_setback_side_m;
-    const buildableLength = plotL - r.min_setback_front_m - r.min_setback_rear_m;
-    const buildableArea   = buildableWidth * buildableLength;
-    const maxCompliantFloors = r.max_floors - 1;
-    const maxTotalBuiltUp = buildableArea * maxCompliantFloors;
-    const safeFSI = (maxTotalBuiltUp / (plotW * plotL)).toFixed(2);
-
-    const fixPrompt =
-      `Revise this building design to fix ALL zoning violations. ` +
-      `You MUST strictly stay within every constraint listed below. No exceptions. ` +
-      `Original prompt: ${prompt} ` +
-      `PLOT DIMENSIONS: ${plotW}m x ${plotL}m ` +
-      `ACTUAL BUILDABLE AREA AFTER SETBACKS: ` +
-      `- Buildable width: ${buildableWidth.toFixed(1)}m (after ${r.min_setback_side_m}m side setbacks on each side) ` +
-      `- Buildable depth: ${buildableLength.toFixed(1)}m (after ${r.min_setback_front_m}m front + ${r.min_setback_rear_m}m rear setbacks) ` +
-      `- Total buildable footprint: ${buildableArea.toFixed(1)} m² ` +
-      `STRICT HARD LIMITS — stay safely within all of these: ` +
-      `- Maximum FSI: ${r.max_fsi} — target FSI of ${safeFSI} or lower ` +
-      `- Maximum Floors: ${r.max_floors} — use at most ${maxCompliantFloors} floors ` +
-      `- Maximum Height: ${r.max_height_m}m — keep height at most ${r.max_height_m - 2}m ` +
-      `- Front Setback: minimum ${r.min_setback_front_m}m — the building MUST NOT extend beyond ${buildableLength.toFixed(1)}m in depth ` +
-      `- Rear Setback: minimum ${r.min_setback_rear_m}m — already accounted for in buildable depth above ` +
-      `- Side Setback: minimum ${r.min_setback_side_m}m — the building MUST NOT exceed ${buildableWidth.toFixed(1)}m in width ` +
-      `- Maximum Coverage: ${r.max_coverage_pct}% — keep coverage below ${r.max_coverage_pct - 5}% ` +
-      `CRITICAL INSTRUCTIONS: ` +
-      `1. The building footprint MUST fit within ${buildableWidth.toFixed(1)}m x ${buildableLength.toFixed(1)}m — this is the only space available after setbacks ` +
-      `2. If the original program is too large for this plot, REDUCE the number of rooms, bedrooms and floors until it fits ` +
-      `3. A smaller fully compliant building is always better than a larger violating one ` +
-      `4. Do not request more rooms than can physically fit in ${buildableArea.toFixed(1)} m² per floor ` +
-      `5. Generate a realistic, compliant building that fits this plot — not the original ambitious program`;
-    const body: Record<string, unknown> = { prompt: fixPrompt };
+    // Call the dedicated /api/fix-generate endpoint.
+    // All geometry calculations (buildable area, clamped floors, coverage) happen
+    // server-side — the backend guarantees mathematical compliance, not the LLM.
+    const body: Record<string, unknown> = { prompt };
     if (addressData) {
       body.address = addressData.address;
-      body.lat = addressData.lat;
-      body.lng = addressData.lng;
+      body.lat     = addressData.lat;
+      body.lng     = addressData.lng;
     }
 
     try {
       const res = await fetchWithRetry(
-        `${API_BASE}/api/generate`,
+        `${API_BASE}/api/fix-generate`,
         {
-          method: "POST",
+          method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body:    JSON.stringify(body),
         },
         (msg) => setRetryMessage(msg),
       );
@@ -581,13 +548,14 @@ export default function Home() {
       const raw = e instanceof Error ? e.message : "Unexpected error.";
       setRetryMessage(null);
       setError(mapBackendError(raw));
-      // Restore snapshots so results panel stays visible
+      // Restore snapshots so results panel stays visible on failure
       setPreviousZoning(null);
       setPreviousLayout(null);
     } finally {
       setIsRegenerating(false);
     }
   }
+
 
   return (
     <main className="h-screen overflow-y-auto bg-arch-bg text-arch-text">

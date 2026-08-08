@@ -16,18 +16,27 @@ def generate_layout(
     bathrooms: int,
     kitchen: bool,
     zone_rules: dict = None,
+    clamped_building_width: float = None,
+    clamped_building_length: float = None,
 ) -> Dict[str, Any]:
-    # Always define setback_front with a default first
+    # Always define setback_front with a safe default first
     setback_front = SETBACK
 
-    if zone_rules:
+    if clamped_building_width and clamped_building_length:
+        # Use mathematically pre-calculated compliant dimensions (from /api/fix-generate).
+        # These are guaranteed to respect all setbacks — no guessing.
+        bw = clamped_building_width
+        bl = clamped_building_length
+        if zone_rules:
+            setback_front = float(zone_rules.get("min_setback_front_m", SETBACK))
+    elif zone_rules:
         setback_front = float(zone_rules.get("min_setback_front_m", SETBACK))
-        setback_side = float(zone_rules.get("min_setback_side_m", SETBACK))
-        setback_rear = float(zone_rules.get("min_setback_rear_m", SETBACK))
-        bw = max(plot_width - 2 * setback_side, 2.0)
-        bl = max(plot_length - setback_front - setback_rear, 2.0)
+        setback_side  = float(zone_rules.get("min_setback_side_m",  SETBACK))
+        setback_rear  = float(zone_rules.get("min_setback_rear_m",  SETBACK))
+        bw = max(plot_width  - 2 * setback_side,               2.0)
+        bl = max(plot_length - setback_front - setback_rear,   2.0)
     else:
-        bw = max(plot_width - 2 * SETBACK, 2.0)
+        bw = max(plot_width  - 2 * SETBACK, 2.0)
         bl = max(plot_length - 2 * SETBACK, 2.0)
 
     total_area = bw * bl

@@ -49,9 +49,13 @@ def check_zoning(
     # Building height
     building_height = floors * FLOOR_HEIGHT_M
 
-    # Setbacks (assume building centered on plot)
-    setback_x = (plot_width - building_width) / 2   # side setbacks
-    setback_y = (plot_length - building_length) / 2  # front/rear setbacks
+# Setbacks — building placed optimally (pushed to rear to maximise front setback)
+    setback_x = (plot_width - building_width) / 2   # side setbacks equal
+    total_y_space = plot_length - building_length
+    # Allocate rear setback first, give remainder to front
+    rear_setback_actual = min(min_setback_rear, total_y_space)
+    front_setback_actual = total_y_space - rear_setback_actual
+    setback_y = front_setback_actual  # used for front check
 
     # FSI (total built-up area / plot area)
     total_built = building_area * floors
@@ -102,34 +106,34 @@ def check_zoning(
             f"Height violation: {building_height:.0f}m exceeds maximum {max_height_m:.0f}m"
         )
 
-    # ---------- Rule 4: Front Setback ----------
-    front_setback_status = _get_status_inverse(setback_y, min_setback_front)
+# ---------- Rule 4: Front Setback ----------
+    front_setback_status = _get_status_inverse(front_setback_actual, min_setback_front)
     rule_results.append({
         "rule_name": "Front Setback",
         "limit": min_setback_front,
-        "actual": round(setback_y, 1),
+        "actual": round(front_setback_actual, 1),
         "unit": "m",
         "status": front_setback_status,
-        "message": f"{setback_y:.1f}m vs min {min_setback_front:.1f}m",
+        "message": f"{front_setback_actual:.1f}m vs min {min_setback_front:.1f}m",
     })
     if front_setback_status == "VIOLATION":
         violations.append(
-            f"Front setback violation: {setback_y:.1f}m is less than minimum {min_setback_front:.1f}m"
+            f"Front setback violation: {front_setback_actual:.1f}m is less than minimum {min_setback_front:.1f}m"
         )
 
     # ---------- Rule 5: Rear Setback ----------
-    rear_setback_status = _get_status_inverse(setback_y, min_setback_rear)
+    rear_setback_status = _get_status_inverse(rear_setback_actual, min_setback_rear)
     rule_results.append({
         "rule_name": "Rear Setback",
         "limit": min_setback_rear,
-        "actual": round(setback_y, 1),
+        "actual": round(rear_setback_actual, 1),
         "unit": "m",
         "status": rear_setback_status,
-        "message": f"{setback_y:.1f}m vs min {min_setback_rear:.1f}m",
+        "message": f"{rear_setback_actual:.1f}m vs min {min_setback_rear:.1f}m",
     })
     if rear_setback_status == "VIOLATION":
         violations.append(
-            f"Rear setback violation: {setback_y:.1f}m is less than minimum {min_setback_rear:.1f}m"
+            f"Rear setback violation: {rear_setback_actual:.1f}m is less than minimum {min_setback_rear:.1f}m"
         )
 
     # ---------- Rule 6: Side Setback ----------
@@ -187,7 +191,7 @@ def check_zoning(
         "violations": violations,
         "coverage": coverage_pct,
         "setback_x": round(setback_x, 2),
-        "setback_y": round(setback_y, 2),
+        "setback_y": round(front_setback_actual, 2),
         "fsi": round(fsi_actual, 2),
         "building_height": building_height,
         "rules": rule_results,

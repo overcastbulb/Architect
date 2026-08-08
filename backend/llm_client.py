@@ -127,7 +127,8 @@ def _apply_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
 
     result["plot_width"] = max(8, min(100, float(result["plot_width"])))
     result["plot_length"] = max(8, min(100, float(result["plot_length"])))
-    result["floors"] = max(1, min(10, int(result["floors"])))
+    result["floors"] = max(1, min(50, int(result["floors"])))
+
     result["bedrooms"] = max(0, min(10, int(result["bedrooms"])))
     result["bathrooms"] = max(1, min(6, int(result["bathrooms"])))
     result["kitchen"] = bool(result["kitchen"])

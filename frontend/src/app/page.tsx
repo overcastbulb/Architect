@@ -564,27 +564,24 @@ export default function Home() {
   /** Builds a corrective prompt from the current violation + rule data. */
   function buildFixPrompt(): string {
     if (!zoning) return prompt;
-    const violationSummary =
-      zoning.violations.length > 0
-        ? zoning.violations.join(", ")
-        : "Minor constraint warnings detected";
     const r = zoning.rules_applied;
-    const constraintSummary = [
-      `Max FSI ${r.max_fsi}`,
-      `Max Floors ${r.max_floors}`,
-      `Max Height ${r.max_height_m}m`,
-      `Max Coverage ${r.max_coverage_pct}%`,
-      `Min Front Setback ${r.min_setback_front_m}m`,
-      `Min Side Setback ${r.min_setback_side_m}m`,
-      `Min Rear Setback ${r.min_setback_rear_m}m`,
-    ].join(", ");
     return (
-      `Revise this building design to fix zoning violations: ${prompt}. ` +
-      `Violations detected: ${violationSummary}. ` +
-      `Zone constraints: ${constraintSummary}. ` +
-      `Generate a fully compliant version that stays within all zoning limits.`
+      `Revise this building design to fix ALL zoning violations. ` +
+      `You MUST strictly stay below every single limit listed. No exceptions. ` +
+      `Original prompt: ${prompt} ` +
+      `STRICT HARD LIMITS — you must not exceed or go below any of these under any circumstances: ` +
+      `- Maximum FSI: ${r.max_fsi} — generate a design with FSI no higher than ${(r.max_fsi * 0.8).toFixed(2)} to ensure a safe margin ` +
+      `- Maximum Floors: ${r.max_floors} — use at most ${r.max_floors - 1} floors ` +
+      `- Maximum Height: ${r.max_height_m}m — keep height at most ${r.max_height_m - 2}m ` +
+      `- Minimum Front Setback: ${r.min_setback_front_m}m — use at least ${(r.min_setback_front_m + 0.5).toFixed(1)}m front setback ` +
+      `- Minimum Side Setback: ${r.min_setback_side_m}m — use at least ${(r.min_setback_side_m + 0.5).toFixed(1)}m side setback ` +
+      `- Minimum Rear Setback: ${r.min_setback_rear_m}m — use at least ${(r.min_setback_rear_m + 0.5).toFixed(1)}m rear setback ` +
+      `- Maximum Ground Coverage: ${r.max_coverage_pct}% — keep coverage below ${r.max_coverage_pct - 5}% ` +
+      `The revised design must pass ALL zoning checks with a safety buffer. ` +
+      `Do not generate a design that is at the edge of any limit. Stay comfortably within all constraints.`
     );
   }
+
 
   async function fixAndRegenerate() {
     if (!zoning || !layout) return;

@@ -19,10 +19,15 @@ def generate_layout(
     clamped_building_width: float = None,
     clamped_building_length: float = None,
 ) -> Dict[str, Any]:
+    # Always define setback_front with a default first
+    setback_front = SETBACK
+
     # Use pre-clamped dimensions if available (from compliance clamping step)
     if clamped_building_width and clamped_building_length:
         bw = clamped_building_width
         bl = clamped_building_length
+        if zone_rules:
+            setback_front = float(zone_rules.get("min_setback_front_m", SETBACK))
     elif zone_rules:
         setback_front = float(zone_rules.get("min_setback_front_m", SETBACK))
         setback_side = float(zone_rules.get("min_setback_side_m", SETBACK))

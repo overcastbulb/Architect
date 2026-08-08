@@ -186,48 +186,6 @@ async def unified_generate(data: GenerateInput):
             zone_rules = None
             detection_info = {"type": "default", "city": "Unknown", "message": "Address set — using default zoning rules"}
 
-    # Step 2.5: Clamp params to zone rules (guarantee compliance before layout)
-    if zone_rules:
-        max_floors_allowed = int(zone_rules.get("max_floors", 99))
-        max_height_allowed = float(zone_rules.get("max_height_m", 999))
-        max_fsi_allowed = float(zone_rules.get("max_fsi", 99))
-        min_setback_front = float(zone_rules.get("min_setback_front_m", 3.0))
-        min_setback_side = float(zone_rules.get("min_setback_side_m", 1.5))
-        min_setback_rear = float(zone_rules.get("min_setback_rear_m", 3.0))
-        max_coverage_pct = float(zone_rules.get("max_coverage_pct", 60.0))
-
-        # Clamp floors to zone maximum
-        floor_height = 3.0
-        max_floors_by_height = int(max_height_allowed / floor_height)
-        params["floors"] = min(params["floors"], max_floors_allowed, max_floors_by_height)
-
-        # Calculate buildable footprint
-        plot_width = float(params["plot_width"])
-        plot_length = float(params["plot_length"])
-        plot_area = plot_width * plot_length
-        buildable_width = max(plot_width - 2 * min_setback_side, 2.0)
-        buildable_length = max(plot_length - min_setback_front - min_setback_rear, 2.0)
-        buildable_area = buildable_width * buildable_length
-
-        # Clamp floors further by FSI limit
-        # max total built-up = max_fsi * plot_area * 0.9 (10% safety margin)
-        max_total_builtup = max_fsi_allowed * plot_area * 0.9
-        max_floors_by_fsi = max(1, int(max_total_builtup / buildable_area))
-        params["floors"] = min(params["floors"], max_floors_by_fsi)
-
-        # Clamp coverage — reduce buildable area if needed
-        max_coverage_ratio = (max_coverage_pct / 100) * 0.9  # 10% safety margin
-        max_building_area = plot_area * max_coverage_ratio
-        if buildable_area > max_building_area:
-            # Scale down buildable dimensions proportionally
-            scale = (max_building_area / buildable_area) ** 0.5
-            buildable_width = round(buildable_width * scale, 2)
-            buildable_length = round(buildable_length * scale, 2)
-
-        # Store clamped buildable dimensions for layout generator to use
-        params["_clamped_building_width"] = round(buildable_width, 2)
-        params["_clamped_building_length"] = round(buildable_length, 2)
-
     # Step 3: Generate layout
     layout = generate_layout(
         plot_width=params["plot_width"],
@@ -237,8 +195,6 @@ async def unified_generate(data: GenerateInput):
         bathrooms=params["bathrooms"],
         kitchen=params["kitchen"],
         zone_rules=zone_rules,
-        clamped_building_width=params.pop("_clamped_building_width", None),
-        clamped_building_length=params.pop("_clamped_building_length", None),
     )
 
     # Step 4: Check zoning compliance

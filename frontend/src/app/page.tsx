@@ -6,6 +6,8 @@ import LayoutView from "@/components/LayoutView";
 import ThreeScene from "@/components/ThreeScene";
 import AddressInput from "@/components/AddressInput";
 import { generatePDFReport } from "@/utils/exportReport";
+import TypologyPresets, { TypologyPreset } from "@/components/TypologyPresets";
+
 
 // Dynamic import - Leaflet needs `window` (no SSR)
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
@@ -128,10 +130,29 @@ const CITY_PROMPTS: Record<string, string[]> = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// City-aware floor limits for preset prompt generation.
+// Values are (city max_floors - 1) to keep generated prompts safely compliant.
+// ---------------------------------------------------------------------------
+const CITY_MAX_FLOORS: Record<string, number> = {
+  "Mumbai":      6,   // R2 zone allows 7 → use 6
+  "Pune":        6,   // PMRDA allows 7 → use 6
+  "Delhi":       3,   // DDA zones allow 4 → use 3
+  "Bangalore":   13,  // BBMP allows 14 → use 13
+  "Hyderabad":   9,   // HMDA allows 10 → use 9
+  "Chennai":     7,   // CMDA allows 8 → use 7
+  "Ahmedabad":   6,   // AMC allows 7 → use 6
+  "Surat":       6,   // SMC allows 7 → use 6
+  "Nashik":      4,   // NMC allows 5 → use 4
+  "Navi Mumbai": 7,   // NMMC allows 8 → use 7
+};
+const DEFAULT_PRESET_FLOORS = 4;
+
 function hasArchKeywords(text: string): boolean {
   const lower = text.toLowerCase();
   return ARCH_KEYWORDS.some((kw) => lower.includes(kw));
 }
+
 
 function mapBackendError(raw: string): string {
   const m = raw.toLowerCase();
@@ -409,11 +430,30 @@ export default function Home() {
     return null;
   }, [running, stepIndex, layout]);
 
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+
+  /** Fills a preset's template with city and floor context. */
+  function generatePresetPrompt(preset: TypologyPreset): string {
+    const cityName = detectedCity;
+    const floors = cityName
+      ? (CITY_MAX_FLOORS[cityName] ?? DEFAULT_PRESET_FLOORS)
+      : DEFAULT_PRESET_FLOORS;
+    const cityInsertion = cityName ? ` in ${cityName}` : "";
+    return preset.basePrompt
+      .replace("{plot}", preset.plotSize)
+      .replace("{floors}", String(floors))
+      .replace("{city}", cityInsertion);
+  }
+
   const handleAddressSelect = useCallback(
     (data: AddressData | null) => {
       setAddressData(data);
-      if (data && validationError?.toLowerCase().includes("address")) {
-        setValidationError(null);
+      if (data) {
+        // New address — reset preset so re-clicking regenerates with new city context
+        setActivePresetId(null);
+        if (validationError?.toLowerCase().includes("address")) {
+          setValidationError(null);
+        }
       }
     },
     [validationError]
@@ -524,6 +564,20 @@ export default function Home() {
         {/* ============ INPUT CARD ============ */}
         <section className="bg-arch-surface border border-arch-border rounded-2xl p-4 md:p-6 space-y-4">
           <AddressInput onAddressSelect={handleAddressSelect} disabled={running} />
+
+          <hr className="border-arch-border" />
+
+          {/* ---- Typology Presets ---- */}
+          <TypologyPresets
+            activePresetId={activePresetId}
+            onSelect={(preset) => {
+              setActivePresetId(preset.id);
+              setPrompt(generatePresetPrompt(preset));
+              setValidationError(null);
+              setPromptTip(null);
+            }}
+            disabled={running}
+          />
 
           <hr className="border-arch-border" />
 

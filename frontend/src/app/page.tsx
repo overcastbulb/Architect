@@ -413,6 +413,13 @@ export default function Home() {
   const [aiParams, setAiParams] = useState<AIParams | null>(null);
   const [layout, setLayout] = useState<LayoutData | null>(null);
   const [zoning, setZoning] = useState<ZoningReport | null>(null);
+
+  // Constraint-aware regeneration state
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [hasRegenerated, setHasRegenerated] = useState(false);
+  const [previousZoning, setPreviousZoning] = useState<ZoningReport | null>(null);
+  const [previousLayout, setPreviousLayout] = useState<LayoutData | null>(null);
+
   const hasSelectedAddress = Boolean(addressData);
 
   // Derive city and pick the right prompt set — updates instantly on address change
@@ -499,6 +506,10 @@ export default function Home() {
     setAiParams(null);
     setLayout(null);
     setZoning(null);
+    // Reset regeneration state on fresh generation
+    setHasRegenerated(false);
+    setPreviousZoning(null);
+    setPreviousLayout(null);
 
     try {
       await sleep(250);
@@ -544,6 +555,82 @@ export default function Home() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     void runFlow(prompt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Constraint-Aware Regeneration
+  // ---------------------------------------------------------------------------
+
+  /** Builds a corrective prompt from the current violation + rule data. */
+  function buildFixPrompt(): string {
+    if (!zoning) return prompt;
+    const violationSummary =
+      zoning.violations.length > 0
+        ? zoning.violations.join(", ")
+        : "Minor constraint warnings detected";
+    const r = zoning.rules_applied;
+    const constraintSummary = [
+      `Max FSI ${r.max_fsi}`,
+      `Max Floors ${r.max_floors}`,
+      `Max Height ${r.max_height_m}m`,
+      `Max Coverage ${r.max_coverage_pct}%`,
+      `Min Front Setback ${r.min_setback_front_m}m`,
+      `Min Side Setback ${r.min_setback_side_m}m`,
+      `Min Rear Setback ${r.min_setback_rear_m}m`,
+    ].join(", ");
+    return (
+      `Revise this building design to fix zoning violations: ${prompt}. ` +
+      `Violations detected: ${violationSummary}. ` +
+      `Zone constraints: ${constraintSummary}. ` +
+      `Generate a fully compliant version that stays within all zoning limits.`
+    );
+  }
+
+  async function fixAndRegenerate() {
+    if (!zoning || !layout) return;
+    // Snapshot the current (non-compliant) results for the diff panel
+    setPreviousZoning(zoning);
+    setPreviousLayout(layout);
+    setIsRegenerating(true);
+    setError(null);
+
+    const fixPrompt = buildFixPrompt();
+    const body: Record<string, unknown> = { prompt: fixPrompt };
+    if (addressData) {
+      body.address = addressData.address;
+      body.lat = addressData.lat;
+      body.lng = addressData.lng;
+    }
+
+    try {
+      const res = await fetchWithRetry(
+        `${API_BASE}/api/generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+        (msg) => setRetryMessage(msg),
+      );
+      setRetryMessage(null);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Regeneration failed.");
+
+      setInterpretation(data.interpreted);
+      setAiParams(data.params);
+      setLayout(data.layout);
+      setZoning(data.zoning);
+      setHasRegenerated(true);
+    } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : "Unexpected error.";
+      setRetryMessage(null);
+      setError(mapBackendError(raw));
+      // Restore snapshots so results panel stays visible
+      setPreviousZoning(null);
+      setPreviousLayout(null);
+    } finally {
+      setIsRegenerating(false);
+    }
   }
 
   return (
@@ -764,6 +851,98 @@ export default function Home() {
 
         {!running && zoning && layout && (
           <section className="space-y-6 animate-fade-in">
+
+            {/* ========= WHAT CHANGED panel — only after Fix & Regenerate ========= */}
+            {hasRegenerated && previousZoning && previousLayout && (
+              <div className="rounded-2xl border-l-4 border-arch-pass bg-arch-surface border border-arch-border overflow-hidden animate-fade-in">
+                {/* Header */}
+                <div className="flex items-center gap-2.5 px-4 py-3 border-b border-arch-border">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="text-arch-pass shrink-0">
+                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <h4 className="text-xs font-semibold uppercase tracking-widest text-arch-pass">Compliant Revision</h4>
+                  <span className="ml-auto text-[10px] font-mono text-arch-text-dim">AI fixed the violations</span>
+                </div>
+
+                {/* Diff rows */}
+                <div className="px-4 py-3 space-y-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-arch-text-dim mb-3">What changed:</p>
+
+                  {/* Floors */}
+                  {previousLayout.floors !== layout.floors && (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-fail/8 border border-arch-fail/20">
+                        <span className="text-arch-fail">✕</span>
+                        <span className="text-arch-text-dim">Original:</span>
+                        <span className="text-arch-fail font-mono font-semibold">{previousLayout.floors} floors</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-pass/8 border border-arch-pass/20">
+                        <span className="text-arch-pass">✓</span>
+                        <span className="text-arch-text-dim">Revised:</span>
+                        <span className="text-arch-pass font-mono font-semibold">{layout.floors} floors</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FSI */}
+                  {previousZoning.fsi !== zoning.fsi && (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-fail/8 border border-arch-fail/20">
+                        <span className="text-arch-fail">✕</span>
+                        <span className="text-arch-text-dim">Original FSI:</span>
+                        <span className="text-arch-fail font-mono font-semibold">{previousZoning.fsi}</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-pass/8 border border-arch-pass/20">
+                        <span className="text-arch-pass">✓</span>
+                        <span className="text-arch-text-dim">Revised FSI:</span>
+                        <span className="text-arch-pass font-mono font-semibold">{zoning.fsi}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Height */}
+                  {previousZoning.building_height !== zoning.building_height && (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-fail/8 border border-arch-fail/20">
+                        <span className="text-arch-fail">✕</span>
+                        <span className="text-arch-text-dim">Original height:</span>
+                        <span className="text-arch-fail font-mono font-semibold">{previousZoning.building_height}m</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-pass/8 border border-arch-pass/20">
+                        <span className="text-arch-pass">✓</span>
+                        <span className="text-arch-text-dim">Revised height:</span>
+                        <span className="text-arch-pass font-mono font-semibold">{zoning.building_height}m</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Coverage */}
+                  {previousZoning.coverage !== zoning.coverage && (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-fail/8 border border-arch-fail/20">
+                        <span className="text-arch-fail">✕</span>
+                        <span className="text-arch-text-dim">Original coverage:</span>
+                        <span className="text-arch-fail font-mono font-semibold">{previousZoning.coverage}%</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-arch-pass/8 border border-arch-pass/20">
+                        <span className="text-arch-pass">✓</span>
+                        <span className="text-arch-text-dim">Revised coverage:</span>
+                        <span className="text-arch-pass font-mono font-semibold">{zoning.coverage}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI summary of what changed */}
+                  {zoning.ai_reasoning?.summary && (
+                    <p className="mt-2 text-[11px] leading-relaxed text-arch-text-dim italic border-t border-arch-border pt-3">
+                      {zoning.ai_reasoning.summary}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Zoning Compliance Report */}
             <div className="bg-arch-surface border border-arch-border rounded-2xl p-4 md:p-6 space-y-3">
               <div className="flex items-center justify-between">
@@ -882,7 +1061,42 @@ export default function Home() {
               ) : (
                 <p className="text-sm text-arch-pass">No zoning violations detected.</p>
               )}
-            </div>
+
+              {/* Fix & Regenerate button — shown when there are violations or warnings */}
+              {(zoning.overall_status === "FAIL" || zoning.overall_status === "WARNING") && (
+                <button
+                  type="button"
+                  onClick={() => void fixAndRegenerate()}
+                  disabled={isRegenerating || running}
+                  className={[
+                    "w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border",
+                    "text-sm font-medium transition-all duration-200",
+                    isRegenerating || running
+                      ? "border-arch-warn/20 bg-arch-warn/5 text-arch-warn/50 cursor-not-allowed"
+                      : "border-arch-warn/40 bg-arch-warn/15 text-arch-warn hover:bg-arch-warn/25 hover:border-arch-warn/60",
+                  ].join(" ")}
+                >
+                  {isRegenerating ? (
+                    <>
+                      {/* Spinner */}
+                      <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25"/>
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      Regenerating compliant design...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M13.5 2.5v3h-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Fix Violations &amp; Regenerate Compliant Design
+                    </>
+                  )}
+                </button>
+              )}
+            </div>{/* end Zoning Compliance Report card */}
 
             {/* Generated Layout */}
             <div className="bg-arch-surface border border-arch-border rounded-2xl p-3 md:p-4">

@@ -6,8 +6,7 @@ Generates a simple algorithmic rectangular floor layout with room divisions.
 from typing import List, Dict, Any
 import math
 
-SETBACK = 3.0  # meters each side
-
+SETBACK = 3.0  # meters each side — legacy fallback only
 
 def generate_layout(
     plot_width: float,
@@ -16,10 +15,21 @@ def generate_layout(
     bedrooms: int,
     bathrooms: int,
     kitchen: bool,
+    zone_rules: dict = None,
 ) -> Dict[str, Any]:
-    # Building footprint after setbacks
-    bw = max(plot_width - 2 * SETBACK, 2.0)
-    bl = max(plot_length - 2 * SETBACK, 2.0)
+    # Use real zone setbacks if available, otherwise fall back to hardcoded
+    if zone_rules:
+        setback_front = float(zone_rules.get("min_setback_front_m", SETBACK))
+        setback_side = float(zone_rules.get("min_setback_side_m", SETBACK))
+        setback_rear = float(zone_rules.get("min_setback_rear_m", SETBACK))
+    else:
+        setback_front = SETBACK
+        setback_side = SETBACK
+        setback_rear = SETBACK
+
+    # Building footprint after real setbacks
+    bw = max(plot_width - 2 * setback_side, 2.0)
+    bl = max(plot_length - setback_front - setback_rear, 2.0)
 
     total_area = bw * bl
 
@@ -49,7 +59,7 @@ def generate_layout(
         "building_width": round(bw, 2),
         "building_length": round(bl, 2),
         "total_floor_area": round(total_area, 2),
-        "setback": SETBACK,
+        "setback": setback_front,
         "floors": floors,
     }
 

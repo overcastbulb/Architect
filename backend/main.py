@@ -194,6 +194,7 @@ async def unified_generate(data: GenerateInput):
         bedrooms=params["bedrooms"],
         bathrooms=params["bathrooms"],
         kitchen=params["kitchen"],
+        zone_rules=zone_rules,
     )
 
     # Step 4: Check zoning compliance

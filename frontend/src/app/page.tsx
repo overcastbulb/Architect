@@ -20,12 +20,7 @@ import {
   LLMInfo,
 } from "@/types";
 
-const EXAMPLE_PROMPTS = [
-  "Design a compliant 2-floor courtyard residence on a 14m x 20m plot with 3 bedrooms, 2 bathrooms, one kitchen, a pooja room, and a single covered parking bay.",
-  "Create a compliant single-floor universal-design home on a 15m x 21m plot with 2 bedrooms, 2 bathrooms, one kitchen, a home office, and step-free circulation.",
-  "Plan a compliant 2-floor neighborhood office building on a 13m x 19m plot with reception, 4 cabins, one meeting room, 2 washrooms, a pantry, and compact on-site parking.",
-  "Design an aggressive high-density concept on a 100m x 100m plot with 10 floors, 10 bedrooms, 6 bathrooms, full-footprint massing, and maximum built-up area to test zoning limits.",
-];
+
 
 const DEMO_PROMPT =
   "Generate a compliant 2-floor duplex townhouse concept on a 12m x 18m plot with 3 bedrooms, 2 bathrooms, one kitchen, a family lounge, and one on-plot parking slot.";
@@ -77,58 +72,7 @@ function detectCityFromAddress(address: string): string | null {
   return null;
 }
 
-const CITY_PROMPTS: Record<string, string[]> = {
-  "Mumbai": [
-    "Design a compliant 8-floor residential apartment on a 20m x 30m plot in Mumbai with 2BHK units per floor and stilt parking",
-    "Plan a mixed-use building on a 25m x 40m plot in Mumbai with retail on ground floor and 6 residential floors above",
-    "Create a compact 3-floor commercial office building on a 15m x 20m plot in South Mumbai with reception and 8 cabins per floor",
-  ],
-  "Pune": [
-    "Design a compliant 2-floor courtyard residence on a 14m x 20m plot in Pune with 3 bedrooms, 2 bathrooms, one kitchen and parking",
-    "Plan a 5-floor residential apartment building on a 20m x 30m plot in Pune with 2BHK units and covered parking",
-    "Create a 2-floor neighborhood office building on a 13m x 19m plot in Pune with reception, 4 cabins, meeting room and parking",
-  ],
-  "Delhi": [
-    "Design a compliant 4-floor residential building on a 18m x 25m plot in Delhi with 3BHK units and basement parking",
-    "Plan a mixed-use development on a 20m x 30m plot in Delhi with commercial ground floor and 3 residential floors",
-    "Create a single-floor villa on a 15m x 20m plot in South Delhi with 4 bedrooms, study room and garden",
-  ],
-  "Bangalore": [
-    "Design a 6-floor residential apartment on a 20m x 30m plot in Bangalore with 2BHK units and covered parking",
-    "Plan a tech office building on a 25m x 35m plot in Whitefield Bangalore with open plan floors and cafeteria",
-    "Create a mixed-use building on a 18m x 25m plot in Koramangala with ground floor retail and 4 residential floors",
-  ],
-  "Hyderabad": [
-    "Design a 6-floor residential apartment on a 20m x 28m plot in Hyderabad with 2BHK units and stilt parking",
-    "Plan a commercial office complex on a 30m x 40m plot in HITEC City Hyderabad with 8 floors and basement parking",
-    "Create a 3-floor mixed-use building on a 15m x 22m plot in Banjara Hills with ground retail and residential above",
-  ],
-  "Chennai": [
-    "Design a 6-floor residential apartment on a 18m x 25m plot in Chennai with 2BHK units and covered parking",
-    "Plan a 3-floor commercial building on a 15m x 20m plot in T Nagar Chennai with ground floor retail and offices above",
-    "Create a single-floor villa on a 20m x 30m plot in Adyar Chennai with 4 bedrooms and garden space",
-  ],
-  "Ahmedabad": [
-    "Design a 3-floor residential bungalow on a 15m x 20m plot in Ahmedabad with 3 bedrooms and covered parking",
-    "Plan a 5-floor apartment building on a 20m x 28m plot in Satellite Ahmedabad with 2BHK units",
-    "Create a commercial showroom on a 18m x 25m plot in SG Highway Ahmedabad with 2 floors and ample parking",
-  ],
-  "Surat": [
-    "Design a 5-floor residential apartment on a 18m x 24m plot in Surat with 2BHK units and parking",
-    "Plan a textile warehouse and office complex on a 30m x 40m plot in Surat with ground floor storage and 2 office floors",
-    "Create a 3-floor mixed-use building on a 15m x 20m plot in Adajan Surat with ground retail and flats above",
-  ],
-  "Nashik": [
-    "Design a 5-floor residential apartment on a 16m x 22m plot in Nashik with 2BHK units and covered parking",
-    "Plan a 3-floor commercial building on a 14m x 18m plot in Nashik with ground floor shops and offices above",
-    "Create a 2-floor villa on a 18m x 25m plot in Gangapur Road Nashik with 3 bedrooms and garden",
-  ],
-  "Navi Mumbai": [
-    "Design an 8-floor residential apartment on a 22m x 32m plot in Navi Mumbai with 2BHK units and stilt parking",
-    "Plan a commercial office building on a 25m x 35m plot in Vashi Navi Mumbai with 8 floors and basement parking",
-    "Create a mixed-use building on a 18m x 25m plot in Kharghar with ground retail and 6 residential floors",
-  ],
-};
+
 
 // ---------------------------------------------------------------------------
 // City-aware floor limits for preset prompt generation.
@@ -422,10 +366,8 @@ export default function Home() {
 
   const hasSelectedAddress = Boolean(addressData);
 
-  // Derive city and pick the right prompt set — updates instantly on address change
+  // Derive city — used by Typology Presets for city-aware prompt generation
   const detectedCity = addressData ? detectCityFromAddress(addressData.address) : null;
-  const activePrompts = (detectedCity && CITY_PROMPTS[detectedCity]) ? CITY_PROMPTS[detectedCity] : EXAMPLE_PROMPTS;
-  const isCitySpecific = Boolean(detectedCity && CITY_PROMPTS[detectedCity]);
 
   // True once the user has ever clicked Generate (controls whether skeletons appear)
   const [hasStarted, setHasStarted] = useState(false);
@@ -743,32 +685,7 @@ export default function Home() {
             <TipBox message={promptTip} onDismiss={() => setPromptTip(null)} />
           )}
 
-          {/* Example prompts — city-specific when a known city is detected */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-mono uppercase tracking-[0.15em] text-arch-text-dim">
-                {isCitySpecific ? `Prompts for` : "Example prompts:"}
-              </p>
-              {isCitySpecific && detectedCity && (
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-arch-accent/15 text-arch-accent border border-arch-accent/25 animate-fade-in">
-                  {detectedCity}
-                </span>
-              )}
-            </div>
-            <div className="grid gap-2">
-              {activePrompts.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => { setPrompt(example); setValidationError(null); setPromptTip(null); }}
-                  disabled={running || !hasSelectedAddress}
-                  className="text-left text-xs md:text-sm px-3 py-2 rounded-lg border border-arch-border bg-arch-bg hover:border-arch-accent/60 hover:text-arch-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </section>
 
         {/* ============ MAP PREVIEW (address set, generation not yet started) ============ */}
